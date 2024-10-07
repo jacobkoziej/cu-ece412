@@ -1,0 +1,8 @@
+[formatter.nix]
+command = "nix"
+options = ["fmt"]
+includes = ["*.nix"]
+
+[formatter.python]
+command = "black"
+includes = ["*.py"]
