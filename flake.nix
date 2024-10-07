@@ -23,6 +23,7 @@
             jupyter
             jupytext
             papermill
+            torchaudio
           ]
         );
 
