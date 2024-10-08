@@ -29,6 +29,7 @@
               ipython
               jupyter
               jupytext
+              openai-whisper
               papermill
               torchWithCuda
               torchaudio
