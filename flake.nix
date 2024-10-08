@@ -13,19 +13,30 @@
       system:
 
       let
-        pkgs = import inputs.nixpkgs { inherit system; };
+        pkgs = import inputs.nixpkgs {
+          inherit system;
+
+          config = {
+            allowUnfree = true;
+          };
+        };
 
         python = pkgs.python3;
 
-        python-pkgs = python.withPackages (
-          python-pkgs: with python-pkgs; [
-            ipython
-            jupyter
-            jupytext
-            papermill
-            torchaudio
-          ]
-        );
+        python-pkgs =
+          (python.withPackages (
+            python-pkgs: with python-pkgs; [
+              ipython
+              jupyter
+              jupytext
+              papermill
+              torchWithCuda
+              torchaudio
+            ]
+          )).override
+            (args: {
+              ignoreCollisions = true;
+            });
 
       in
       {
