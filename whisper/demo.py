@@ -15,7 +15,7 @@
 # %%
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-# noteboook.py -- OpenAI's Whisper on LibriSpeech ASR
+# demo.py -- OpenAI's Whisper on LibriSpeech ASR
 # Copyright (C) 2024  Jacob Koziej <jacobkoziej@gmail.com>
 
 # %%
