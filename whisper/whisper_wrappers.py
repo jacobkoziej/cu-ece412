@@ -16,7 +16,7 @@ from whisper import (
 )
 
 
-def load_model(name: str) -> Whisper:
+def load_base_model(name: str) -> Whisper:
     default = os.path.join(os.path.expanduser("~"), ".cache")
     download_root = os.path.join(os.getenv("XDG_CACHE_HOME", default), "whisper")
 
