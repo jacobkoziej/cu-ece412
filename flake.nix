@@ -32,6 +32,7 @@
               jupytext
               openai-whisper
               papermill
+              pytorch-lightning
               torchWithCuda
               torchaudio
             ]
