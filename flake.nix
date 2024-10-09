@@ -27,6 +27,7 @@
           (python.withPackages (
             python-pkgs: with python-pkgs; [
               ipython
+              einops
               jupyter
               jupytext
               openai-whisper
