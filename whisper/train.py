@@ -6,6 +6,12 @@
 
 import torch
 
+from einops import rearrange
+from pytorch_lightning import LightningModule
+from torch import (
+    nn,
+    optim,
+)
 from torch.nn.utils.rnn import pad_sequence
 from whisper.audio import log_mel_spectrogram
 
@@ -44,3 +50,32 @@ class Collate:
         )
 
         return mel, tokens, labels
+
+
+class WhisperFineTuner(LightningModule):
+    def __init__(self, model, options):
+        super().__init__()
+
+        self.model = model
+        self.options = options
+
+        self.loss = nn.CrossEntropyLoss(ignore_index=IGNORE_INDEX)
+
+    def training_step(self, batch, batch_idx):
+        mel, tokens, labels = batch
+
+        prediction = self.model.forward(mel, tokens)
+
+        prediction = rearrange(prediction, "b t f -> (b t) f")
+        labels = rearrange(labels, "b t -> (b t)")
+
+        loss = self.loss(prediction, labels)
+
+        self.log("train/loss", loss, prog_bar=True)
+
+        return loss
+
+    def configure_optimizers(self):
+        optimizer = optim.Adam(self.parameters())
+
+        return optimizer
