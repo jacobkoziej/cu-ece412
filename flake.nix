@@ -33,6 +33,7 @@
               openai-whisper
               papermill
               pytorch-lightning
+              tensorboard
               torchWithCuda
               torchaudio
             ]
