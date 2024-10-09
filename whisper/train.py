@@ -4,19 +4,33 @@
 # train.py -- whisper trainer
 # Copyright (C) 2024  Jacob Koziej <jacobkoziej@gmail.com>
 
+import argparse
+
 import torch
 
 from einops import rearrange
-from pytorch_lightning import LightningModule
+from pytorch_lightning import (
+    LightningModule,
+    Trainer,
+)
 from torch import (
     nn,
     optim,
 )
 from torch.nn.utils.rnn import pad_sequence
+from torch.utils.data import DataLoader
 from whisper.audio import log_mel_spectrogram
+from whisper.decoding import DecodingOptions
+from whisper.tokenizer import get_tokenizer
+from whisper_wrappers import (
+    LibriSpeech,
+    load_base_model,
+)
 
 
 IGNORE_INDEX = -100
+LANGUAGE = "en"
+MODEL = "tiny.en"
 
 
 class Collate:
@@ -79,3 +93,55 @@ class WhisperFineTuner(LightningModule):
         optimizer = optim.Adam(self.parameters())
 
         return optimizer
+
+
+def main() -> None:
+    argparser = argparse.ArgumentParser(
+        description="whisper fine-tuner",
+    )
+
+    argparser.add_argument(
+        "-b",
+        "--batch-size",
+        default=16,
+        help="batch size",
+        metavar="N",
+    )
+    argparser.add_argument(
+        "-e",
+        "--epochs",
+        default=30,
+        help="epochs",
+        metavar="N",
+    )
+
+    args = argparser.parse_args()
+
+    options = DecodingOptions(language=LANGUAGE, without_timestamps=True)
+
+    tokenizer = get_tokenizer(
+        multilingual=False,
+        language=LANGUAGE,
+        task=options.task,
+    )
+
+    train = LibriSpeech("train-clean-100")
+
+    collate = Collate(tokenizer)
+
+    train_loader = DataLoader(
+        train,
+        batch_size=args.batch_size,
+        collate_fn=collate,
+        num_workers=torch.cuda.device_count() * 4,
+    )
+
+    model = WhisperFineTuner(load_base_model(MODEL), options)
+
+    trainer = Trainer(max_epochs=args.epochs)
+
+    trainer.fit(model, train_dataloaders=train_loader)
+
+
+if __name__ == "__main__":
+    main()
