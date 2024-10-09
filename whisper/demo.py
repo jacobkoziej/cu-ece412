@@ -23,19 +23,8 @@ import os
 
 from torchaudio.datasets import LIBRISPEECH
 
+)
 # %%
-train = LIBRISPEECH(
-    root=os.environ.get("DATASETS_PATH", "."),
-    url="train-clean-100",
-    download=True,
-)
-validate = LIBRISPEECH(
-    root=os.environ.get("DATASETS_PATH", "."),
-    url="dev-clean",
-    download=True,
-)
-test = LIBRISPEECH(
-    root=os.environ.get("DATASETS_PATH", "."),
-    url="test-clean",
-    download=True,
-)
+train = LibriSpeech("train-clean-100")
+validate = LibriSpeech("dev-clean")
+test = LibriSpeech("test-clean")

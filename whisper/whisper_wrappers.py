@@ -2,11 +2,14 @@
 #
 # whisper_wrappers.py -- whisper wrappers
 # Copyright (C) 2024  Jacob Koziej <jacobkoziej@gmail.com>
+# Copyright (C) 2024  Isaiah Rivera <isaiahcooperdump@gmail.com>
 
 import os
 
 import torch
 
+from torch.utils.data import Dataset
+from torchaudio.datasets import LIBRISPEECH
 from whisper import (
     ModelDimensions,
     Whisper,
@@ -14,6 +17,26 @@ from whisper import (
     _MODELS,
     _download,
 )
+from whisper.audio import pad_or_trim
+
+
+class LibriSpeech(torch.utils.data.Dataset):
+    def __init__(self, dataset):
+        self.dataset = LIBRISPEECH(
+            root=os.environ.get("DATASETS_PATH", "."),
+            url=dataset,
+            download=True,
+        )
+
+    def __len__(self):
+        return len(self.dataset)
+
+    def __getitem__(self, item):
+        audio, _, transcript, _, _, _ = self.dataset[item]
+
+        audio = pad_or_trim(audio.squeeze())
+
+        return audio, transcript
 
 
 def load_base_model(name: str) -> Whisper:
