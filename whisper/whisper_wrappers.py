@@ -20,7 +20,7 @@ from whisper import (
 from whisper.audio import pad_or_trim
 
 
-class LibriSpeech(torch.utils.data.Dataset):
+class LibriSpeech(Dataset):
     def __init__(self, dataset):
         self.dataset = LIBRISPEECH(
             root=os.environ.get("DATASETS_PATH", "."),
