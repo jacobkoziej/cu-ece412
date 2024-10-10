@@ -8,6 +8,9 @@ import argparse
 
 import torch
 
+import evaluate 
+from jiwer import wer
+
 from einops import rearrange
 from pytorch_lightning import (
     LightningModule,
@@ -67,13 +70,31 @@ class Collate:
 
 
 class WhisperFineTuner(LightningModule):
-    def __init__(self, model, options):
+    def __init__(self, model, options,tokenizer):
         super().__init__()
 
         self.model = model
         self.options = options
+        self.tokenizer = tokenizer
 
         self.loss = nn.CrossEntropyLoss(ignore_index=IGNORE_INDEX)
+        self.wer = evaluate.load("wer")
+    
+    def _clean_decode(self,features):
+        flattened_values = list((self.tokenizer.special_tokens.values()))
+        flattened_values.remove(self.tokenizer.eot)
+        filtered_features = features[~np.isin(features, flattened_values)]
+        text  = self.tokenizer.decode(filtered_features)
+        
+        segments = text.split("<|endoftext|>")
+        sentences = []
+        for segment in segments:
+            cleaned_segment = segment.strip()
+            if cleaned_segment: 
+                sentences.append(cleaned_segment)
+        
+
+        return sentences
 
     def training_step(self, batch, batch_idx):
         mel, tokens, labels = batch
@@ -88,6 +109,26 @@ class WhisperFineTuner(LightningModule):
         self.log("train/loss", loss, prog_bar=True)
 
         return loss
+    
+    def validation_step(self,batch,batch_idx):
+        mel, tokens, labels = batch
+
+        prediction = self.model.forward(mel, tokens)
+
+        prediction = rearrange(prediction, "b t f -> (b t) f")
+        labels = rearrange(labels, "b t -> (b t)")
+
+        predicted_token_ids = prediction.argmax(dim=-1) # most likely token
+        labels[labels==-100] = self.tokenizer.eot
+
+        hyp = self._clean_decode(predicted_token_ids)
+        res = self._clean_decode(labels)
+
+        val_loss = self.loss(prediction, labels)
+        err = self.wer.compute(references=res,predictions=hyp)
+
+        self.log("val/loss", val_loss)
+        self.log("val/wer",err)
 
     def configure_optimizers(self):
         optimizer = optim.Adam(self.parameters())
@@ -110,7 +151,7 @@ def main() -> None:
     argparser.add_argument(
         "-e",
         "--epochs",
-        default=30,
+        default=2,
         help="epochs",
         metavar="N",
     )
@@ -136,11 +177,21 @@ def main() -> None:
         num_workers=torch.cuda.device_count() * 4,
     )
 
-    model = WhisperFineTuner(load_base_model(MODEL), options)
+    val = LibriSpeech("dev-clean")
+
+    val_loader = DataLoader(
+        val,
+        batch_size = args.batch_size,
+        collate_fn=collate,
+        num_workers=torch.cuda.device_count() * 4
+    )
+
+    model = WhisperFineTuner(load_base_model(MODEL), options,tokenizer=tokenizer)
 
     trainer = Trainer(max_epochs=args.epochs)
 
-    trainer.fit(model, train_dataloaders=train_loader)
+    trainer.fit(model, train_dataloaders=train_loader,val_dataloaders=val_loader)
+
 
 
 if __name__ == "__main__":
