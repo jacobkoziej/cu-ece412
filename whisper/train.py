@@ -10,6 +10,7 @@ import torch
 
 import evaluate 
 from jiwer import wer
+import numpy as np 
 
 from einops import rearrange
 from pytorch_lightning import (
@@ -25,6 +26,7 @@ from torch.utils.data import DataLoader
 from whisper.audio import log_mel_spectrogram
 from whisper.decoding import DecodingOptions
 from whisper.tokenizer import get_tokenizer
+from whisper.normalizers import EnglishTextNormalizer
 from whisper_wrappers import (
     LibriSpeech,
     load_base_model,
@@ -79,6 +81,7 @@ class WhisperFineTuner(LightningModule):
 
         self.loss = nn.CrossEntropyLoss(ignore_index=IGNORE_INDEX)
         self.wer = evaluate.load("wer")
+        self.normalizer = EnglishTextNormalizer()
     
     def _clean_decode(self,features):
         flattened_values = list((self.tokenizer.special_tokens.values()))
@@ -121,11 +124,11 @@ class WhisperFineTuner(LightningModule):
         predicted_token_ids = prediction.argmax(dim=-1) # most likely token
         labels[labels==-100] = self.tokenizer.eot
 
-        hyp = self._clean_decode(predicted_token_ids)
-        res = self._clean_decode(labels)
-
-        val_loss = self.loss(prediction, labels)
+        res = [self.normalizer(text) for text in self._clean_decode(labels)]
+        hyp = [self.normalizer(text) for text in self._clean_decode(predicted_token_ids)]
+        
         err = self.wer.compute(references=res,predictions=hyp)
+        val_loss = self.loss(prediction, labels)
 
         self.log("val/loss", val_loss)
         self.log("val/wer",err)
