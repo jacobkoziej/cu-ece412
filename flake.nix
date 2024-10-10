@@ -36,6 +36,8 @@
               tensorboard
               torchWithCuda
               torchaudio
+              evaluate
+              jiwer
             ]
           )).override
             (args: {
