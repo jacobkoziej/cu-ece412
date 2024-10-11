@@ -166,7 +166,7 @@ def main() -> None:
     argparser.add_argument(
         "-e",
         "--epochs",
-        default=2,
+        default=-1,
         help="epochs",
         metavar="N",
     )
