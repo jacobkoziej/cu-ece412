@@ -81,6 +81,12 @@ class WhisperFineTuner(LightningModule):
         self.options = options
         self.tokenizer = tokenizer
 
+        for p in self.model.parameters():
+            p.requires_grad = False
+
+        for p in self.model.decoder.parameters():
+            p.requires_grad = True
+
         self.loss = nn.CrossEntropyLoss(ignore_index=IGNORE_INDEX)
         self.normalizer = EnglishTextNormalizer()
         self.cer = cer
