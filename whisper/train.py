@@ -10,7 +10,10 @@ import argparse
 import torch
 
 from einops import rearrange
-from jiwer import wer
+from jiwer import (
+    cer,
+    wer,
+)
 from pytorch_lightning import (
     LightningModule,
     Trainer,
@@ -80,6 +83,7 @@ class WhisperFineTuner(LightningModule):
 
         self.loss = nn.CrossEntropyLoss(ignore_index=IGNORE_INDEX)
         self.normalizer = EnglishTextNormalizer()
+        self.cer = cer
         self.wer = wer
 
     def _decode(self, tokens):
@@ -114,16 +118,18 @@ class WhisperFineTuner(LightningModule):
 
         prediction = self.model.forward(mel, tokens)
 
-        wer_prediction = self._decode(torch.argmax(prediction, axis=-1))
-        wer_labels = self._decode(labels)
+        reference = self._decode(torch.argmax(prediction, axis=-1))
+        hypothesis = self._decode(labels)
 
-        wer = self.wer(wer_prediction, wer_labels)
+        cer = self.cer(reference, hypothesis)
+        wer = self.wer(reference, hypothesis)
 
         prediction, labels = self._rearrange(prediction, labels)
 
         loss = self.loss(prediction, labels)
 
         self.log("val/loss", loss, prog_bar=True)
+        self.log("val/cer", cer, prog_bar=True)
         self.log("val/wer", wer, prog_bar=True)
 
     def configure_optimizers(self):
