@@ -3,6 +3,7 @@
 #
 # train.py -- whisper trainer
 # Copyright (C) 2024  Jacob Koziej <jacobkoziej@gmail.com>
+# Copyright (C) 2024  Isaiah Rivera <isaiahcooperdump@gmail.com>
 
 import argparse
 
