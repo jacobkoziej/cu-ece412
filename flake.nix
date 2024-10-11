@@ -27,7 +27,6 @@
           (python.withPackages (
             python-pkgs: with python-pkgs; [
               einops
-              evaluate
               ipython
               jiwer
               jupyter
