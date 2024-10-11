@@ -216,6 +216,7 @@ def main() -> None:
 
     trainer = Trainer(
         callbacks=[checkpoint_callback],
+        log_every_n_steps=args.batch_size,
         max_epochs=args.epochs,
     )
 
