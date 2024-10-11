@@ -17,6 +17,7 @@ from pytorch_lightning import (
     LightningModule,
     Trainer,
 )
+from pytorch_lightning.callbacks import ModelCheckpoint
 from torch import (
     nn,
     optim,
@@ -153,6 +154,13 @@ def main() -> None:
         metavar="N",
     )
     argparser.add_argument(
+        "-c",
+        "--checkpoint-path",
+        default='checkpoints',
+        help="checkpoint path",
+        metavar="PATH",
+    )
+    argparser.add_argument(
         "-e",
         "--epochs",
         default=2,
@@ -196,7 +204,15 @@ def main() -> None:
         tokenizer=tokenizer,
     )
 
+    checkpoint_callback = ModelCheckpoint(
+        dirpath=args.checkpoint_path,
+        save_last='link',
+        save_top_k=-1,
+        every_n_epochs=1,
+    )
+
     trainer = Trainer(
+        callbacks=[checkpoint_callback],
         max_epochs=args.epochs,
     )
 
@@ -204,6 +220,7 @@ def main() -> None:
         model,
         train_dataloaders=train_loader,
         val_dataloaders=val_loader,
+        ckpt_path='last',
     )
 
 
