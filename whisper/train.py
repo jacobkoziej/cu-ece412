@@ -155,6 +155,7 @@ def main() -> None:
         default=16,
         help="batch size",
         metavar="N",
+        type=int,
     )
     argparser.add_argument(
         "-c",
@@ -162,6 +163,7 @@ def main() -> None:
         default="checkpoints",
         help="checkpoint path",
         metavar="PATH",
+        type=str,
     )
     argparser.add_argument(
         "-e",
@@ -169,6 +171,7 @@ def main() -> None:
         default=-1,
         help="epochs",
         metavar="N",
+        type=int,
     )
 
     args = argparser.parse_args()
