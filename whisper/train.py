@@ -159,7 +159,7 @@ def main() -> None:
     argparser.add_argument(
         "-c",
         "--checkpoint-path",
-        default='checkpoints',
+        default="checkpoints",
         help="checkpoint path",
         metavar="PATH",
     )
@@ -209,7 +209,7 @@ def main() -> None:
 
     checkpoint_callback = ModelCheckpoint(
         dirpath=args.checkpoint_path,
-        save_last='link',
+        save_last="link",
         save_top_k=-1,
         every_n_epochs=1,
     )
@@ -224,7 +224,7 @@ def main() -> None:
         model,
         train_dataloaders=train_loader,
         val_dataloaders=val_loader,
-        ckpt_path='last',
+        ckpt_path="last",
     )
 
 
