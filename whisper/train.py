@@ -7,8 +7,6 @@
 
 import argparse
 
-import evaluate
-import numpy as np
 import torch
 
 from einops import rearrange
@@ -81,31 +79,29 @@ class WhisperFineTuner(LightningModule):
         self.tokenizer = tokenizer
 
         self.loss = nn.CrossEntropyLoss(ignore_index=IGNORE_INDEX)
-        self.wer = evaluate.load("wer")
         self.normalizer = EnglishTextNormalizer()
+        self.wer = wer
 
-    def _clean_decode(self, features):
-        flattened_values = list((self.tokenizer.special_tokens.values()))
-        flattened_values.remove(self.tokenizer.eot)
-        filtered_features = features[~np.isin(features, flattened_values)]
-        text = self.tokenizer.decode(filtered_features)
+    def _decode(self, tokens):
+        tokens[tokens == IGNORE_INDEX] = self.tokenizer.eot
 
-        segments = text.split("<|endoftext|>")
-        sentences = []
-        for segment in segments:
-            cleaned_segment = segment.strip()
-            if cleaned_segment:
-                sentences.append(cleaned_segment)
+        transcripts = [self.tokenizer.decode(t).strip() for t in tokens]
+        transcripts = [self.normalizer(t) for t in transcripts]
 
-        return sentences
+        return transcripts
+
+    def _rearrange(self, prediction, labels):
+        prediction = rearrange(prediction, "b t f -> (b t) f")
+        labels = rearrange(labels, "b t -> (b t)")
+
+        return prediction, labels
 
     def training_step(self, batch, batch_idx):
         mel, tokens, labels = batch
 
         prediction = self.model.forward(mel, tokens)
 
-        prediction = rearrange(prediction, "b t f -> (b t) f")
-        labels = rearrange(labels, "b t -> (b t)")
+        prediction, labels = self._rearrange(prediction, labels)
 
         loss = self.loss(prediction, labels)
 
@@ -118,22 +114,17 @@ class WhisperFineTuner(LightningModule):
 
         prediction = self.model.forward(mel, tokens)
 
-        prediction = rearrange(prediction, "b t f -> (b t) f")
-        labels = rearrange(labels, "b t -> (b t)")
+        wer_prediction = self._decode(torch.argmax(prediction, axis=-1))
+        wer_labels = self._decode(labels)
 
-        predicted_token_ids = prediction.argmax(dim=-1)  # most likely token
-        labels[labels == -100] = self.tokenizer.eot
+        wer = self.wer(wer_prediction, wer_labels)
 
-        res = [self.normalizer(text) for text in self._clean_decode(labels)]
-        hyp = [
-            self.normalizer(text) for text in self._clean_decode(predicted_token_ids)
-        ]
+        prediction, labels = self._rearrange(prediction, labels)
 
-        err = self.wer.compute(references=res, predictions=hyp)
-        val_loss = self.loss(prediction, labels)
+        loss = self.loss(prediction, labels)
 
-        self.log("val/loss", val_loss)
-        self.log("val/wer", err)
+        self.log("val/loss", loss, prog_bar=True)
+        self.log("val/wer", wer, prog_bar=True)
 
     def configure_optimizers(self):
         optimizer = optim.Adam(self.parameters())
