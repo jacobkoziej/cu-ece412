@@ -26,8 +26,10 @@
         python-pkgs =
           (python.withPackages (
             python-pkgs: with python-pkgs; [
-              ipython
               einops
+              evaluate
+              ipython
+              jiwer
               jupyter
               jupytext
               openai-whisper
@@ -36,8 +38,6 @@
               tensorboard
               torchWithCuda
               torchaudio
-              evaluate
-              jiwer
             ]
           )).override
             (args: {

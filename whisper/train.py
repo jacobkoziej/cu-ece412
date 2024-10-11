@@ -6,13 +6,12 @@
 
 import argparse
 
+import evaluate
+import numpy as np
 import torch
 
-import evaluate 
-from jiwer import wer
-import numpy as np 
-
 from einops import rearrange
+from jiwer import wer
 from pytorch_lightning import (
     LightningModule,
     Trainer,
@@ -25,8 +24,8 @@ from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import DataLoader
 from whisper.audio import log_mel_spectrogram
 from whisper.decoding import DecodingOptions
-from whisper.tokenizer import get_tokenizer
 from whisper.normalizers import EnglishTextNormalizer
+from whisper.tokenizer import get_tokenizer
 from whisper_wrappers import (
     LibriSpeech,
     load_base_model,
@@ -72,7 +71,7 @@ class Collate:
 
 
 class WhisperFineTuner(LightningModule):
-    def __init__(self, model, options,tokenizer):
+    def __init__(self, model, options, tokenizer):
         super().__init__()
 
         self.model = model
@@ -82,20 +81,19 @@ class WhisperFineTuner(LightningModule):
         self.loss = nn.CrossEntropyLoss(ignore_index=IGNORE_INDEX)
         self.wer = evaluate.load("wer")
         self.normalizer = EnglishTextNormalizer()
-    
-    def _clean_decode(self,features):
+
+    def _clean_decode(self, features):
         flattened_values = list((self.tokenizer.special_tokens.values()))
         flattened_values.remove(self.tokenizer.eot)
         filtered_features = features[~np.isin(features, flattened_values)]
-        text  = self.tokenizer.decode(filtered_features)
-        
+        text = self.tokenizer.decode(filtered_features)
+
         segments = text.split("<|endoftext|>")
         sentences = []
         for segment in segments:
             cleaned_segment = segment.strip()
-            if cleaned_segment: 
+            if cleaned_segment:
                 sentences.append(cleaned_segment)
-        
 
         return sentences
 
@@ -112,8 +110,8 @@ class WhisperFineTuner(LightningModule):
         self.log("train/loss", loss, prog_bar=True)
 
         return loss
-    
-    def validation_step(self,batch,batch_idx):
+
+    def validation_step(self, batch, batch_idx):
         mel, tokens, labels = batch
 
         prediction = self.model.forward(mel, tokens)
@@ -121,17 +119,19 @@ class WhisperFineTuner(LightningModule):
         prediction = rearrange(prediction, "b t f -> (b t) f")
         labels = rearrange(labels, "b t -> (b t)")
 
-        predicted_token_ids = prediction.argmax(dim=-1) # most likely token
-        labels[labels==-100] = self.tokenizer.eot
+        predicted_token_ids = prediction.argmax(dim=-1)  # most likely token
+        labels[labels == -100] = self.tokenizer.eot
 
         res = [self.normalizer(text) for text in self._clean_decode(labels)]
-        hyp = [self.normalizer(text) for text in self._clean_decode(predicted_token_ids)]
-        
-        err = self.wer.compute(references=res,predictions=hyp)
+        hyp = [
+            self.normalizer(text) for text in self._clean_decode(predicted_token_ids)
+        ]
+
+        err = self.wer.compute(references=res, predictions=hyp)
         val_loss = self.loss(prediction, labels)
 
         self.log("val/loss", val_loss)
-        self.log("val/wer",err)
+        self.log("val/wer", err)
 
     def configure_optimizers(self):
         optimizer = optim.Adam(self.parameters())
@@ -184,17 +184,26 @@ def main() -> None:
 
     val_loader = DataLoader(
         val,
-        batch_size = args.batch_size,
+        batch_size=args.batch_size,
         collate_fn=collate,
-        num_workers=torch.cuda.device_count() * 4
+        num_workers=torch.cuda.device_count() * 4,
     )
 
-    model = WhisperFineTuner(load_base_model(MODEL), options,tokenizer=tokenizer)
+    model = WhisperFineTuner(
+        load_base_model(MODEL),
+        options,
+        tokenizer=tokenizer,
+    )
 
-    trainer = Trainer(max_epochs=args.epochs)
+    trainer = Trainer(
+        max_epochs=args.epochs,
+    )
 
-    trainer.fit(model, train_dataloaders=train_loader,val_dataloaders=val_loader)
-
+    trainer.fit(
+        model,
+        train_dataloaders=train_loader,
+        val_dataloaders=val_loader,
+    )
 
 
 if __name__ == "__main__":
