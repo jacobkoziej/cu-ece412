@@ -33,6 +33,7 @@
               jupytext
               librosa
               matplotlib
+              numpy
               openai-whisper
               pandas
               papermill
