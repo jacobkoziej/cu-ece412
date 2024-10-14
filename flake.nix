@@ -38,6 +38,7 @@
               pandas
               papermill
               pytorch-lightning
+              scipy
               tensorboard
               torch-audiomentations
               torchWithCuda
