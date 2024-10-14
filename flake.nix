@@ -31,6 +31,7 @@
               jiwer
               jupyter
               jupytext
+              librosa
               matplotlib
               openai-whisper
               papermill
