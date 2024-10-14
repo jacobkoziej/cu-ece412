@@ -23,6 +23,9 @@
 # # Setup
 
 # %%
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 import torch
 
 from IPython.display import Audio
@@ -30,6 +33,7 @@ from librosa.display import (
     specshow,
     waveshow,
 )
+from scipy.signal import lfilter
 from torch_audiomentations import (
     AddColoredNoise,
     Compose,
@@ -45,7 +49,8 @@ from whisper_wrappers import (
 )
 
 # %%
-model = load_model()
+model = load_model("checkpoints/ideal.ckpt")
+model.eval()
 
 # %%
 test = LibriSpeech("test-clean")
@@ -209,3 +214,78 @@ wer
 
 # %% [markdown]
 # Needless to say, impressive!
+
+# %% [markdown]
+# # Results
+
+
+# %%
+def ax_stem(ax, log, type, name, linefmt):
+
+    ax.stem(log["step"], log["value"], label=f"{type}/{name}", linefmt=linefmt)
+
+
+# %%
+def lpf_plot(ax, log, type, name, color):
+    alpha = 0.6
+
+    value = lfilter([1 - alpha], [1, -alpha], log["value"])
+
+    ax.plot(log["step"], value, label=f"{type}/{name}", color=color)
+
+
+# %%
+stem_logs = [
+    {
+        "type": "val",
+        "name": "cer",
+        "linefmt": "b--",
+    },
+    {
+        "type": "val",
+        "name": "wer",
+        "linefmt": "r--",
+    },
+]
+
+# %%
+ax = plt.subplot()
+
+for stem_log in stem_logs:
+    log = pd.read_csv(f"logs/{stem_log['type']}/{stem_log['name']}.csv")
+    ax_stem(ax, log, **stem_log)
+
+epochs = len(log["step"])
+xticks = np.linspace(log["step"].iloc[0], log["step"].iloc[-1], epochs)
+xlabels = [str(i) for i in range(epochs)]
+
+_ = ax.set_title("Error Rates")
+_ = ax.set_xticks(xticks, xlabels)
+_ = ax.set_xlabel("Epoch")
+_ = ax.set_ylabel("Error")
+_ = ax.legend()
+
+# %%
+ax = plt.subplot()
+
+log = pd.read_csv("logs/val/loss.csv")
+ax_stem(ax, log, "val", "loss", "r--")
+
+log = pd.read_csv("logs/train/loss.csv")
+lpf_plot(ax, log, "train", "loss", "blue")
+
+_ = ax.set_title("Loss Rates")
+_ = ax.set_xlabel("Step")
+_ = ax.set_ylabel("Loss")
+_ = ax.legend()
+
+# %% [markdown]
+# ```
+# baseline/test/cer  0.1266426295042038
+# baseline/test/loss 1.1183173656463623
+# baseline/test/wer  0.1837381273508072
+#
+# ideal/test/cer     0.03146420791745186
+# ideal/test/loss    0.8304051160812378
+# ideal/test/wer     0.05836161971092224
+# ```
