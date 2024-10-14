@@ -34,6 +34,7 @@
               librosa
               matplotlib
               openai-whisper
+              pandas
               papermill
               pytorch-lightning
               tensorboard
