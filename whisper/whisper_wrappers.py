@@ -52,7 +52,10 @@ class Collate:
         tokens = []
 
         for audio, transcript in batch:
+            audio = pad_or_trim(audio)
+
             mel += [log_mel_spectrogram(audio)]
+
             tokens += [
                 [*self.tokenizer.sot_sequence_including_notimestamps]
                 + self.tokenizer.encode(transcript)
@@ -91,7 +94,7 @@ class LibriSpeech(Dataset):
     def __getitem__(self, item):
         audio, _, transcript, _, _, _ = self.dataset[item]
 
-        audio = pad_or_trim(audio.squeeze())
+        audio = audio.squeeze()
 
         return audio, transcript
 
