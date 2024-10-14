@@ -58,7 +58,6 @@ class Collate:
 
             tokens += [
                 [*self.tokenizer.sot_sequence_including_notimestamps]
-                + self.tokenizer.encode(transcript)
                 + self.tokenizer.encode(self.normalizer(transcript))
             ]
 
