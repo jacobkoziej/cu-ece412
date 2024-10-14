@@ -9,23 +9,13 @@ import argparse
 
 import torch
 
-from einops import rearrange
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import ModelCheckpoint
 from torch.utils.data import DataLoader
-from whisper.decoding import DecodingOptions
-from whisper.normalizers import EnglishTextNormalizer
-from whisper.tokenizer import get_tokenizer
 from whisper_wrappers import (
-    Collate,
     LibriSpeech,
-    Whisper,
-    load_base_model,
+    load_model,
 )
-
-
-LANGUAGE = "en"
-MODEL = "tiny.en"
 
 
 def main() -> None:
@@ -60,41 +50,22 @@ def main() -> None:
 
     args = argparser.parse_args()
 
-    options = DecodingOptions(language=LANGUAGE, without_timestamps=True)
-
-    normalizer = EnglishTextNormalizer()
-
-    tokenizer = get_tokenizer(
-        multilingual=False,
-        language=LANGUAGE,
-        task=options.task,
-    )
+    model = load_model()
 
     train = LibriSpeech("train-clean-100")
-
-    collate = Collate(normalizer, tokenizer)
+    val = LibriSpeech("dev-clean")
 
     train_loader = DataLoader(
         train,
         batch_size=args.batch_size,
-        collate_fn=collate,
+        collate_fn=model.collate_fn,
         num_workers=torch.cuda.device_count() * 4,
     )
-
-    val = LibriSpeech("dev-clean")
-
     val_loader = DataLoader(
         val,
         batch_size=args.batch_size,
-        collate_fn=collate,
+        collate_fn=model.collate_fn,
         num_workers=torch.cuda.device_count() * 4,
-    )
-
-    model = Whisper(
-        load_base_model(MODEL),
-        options,
-        normalizer,
-        tokenizer,
     )
 
     checkpoint_callback = ModelCheckpoint(

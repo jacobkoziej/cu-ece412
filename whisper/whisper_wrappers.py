@@ -32,9 +32,14 @@ from whisper.audio import (
     pad_or_trim,
     log_mel_spectrogram,
 )
+from whisper.decoding import DecodingOptions
+from whisper.normalizers import EnglishTextNormalizer
+from whisper.tokenizer import get_tokenizer
 
 
 IGNORE_INDEX = -100
+LANGUAGE = "en"
+MODEL = "tiny.en"
 
 
 class Collate:
@@ -124,6 +129,20 @@ class Whisper(LightningModule):
 
         return prediction, labels
 
+    def configure_optimizers(self):
+        optimizer = optim.Adam(
+            self.parameters(),
+            lr=1e-6,
+        )
+
+        return optimizer
+
+    @property
+    def collate_fn(self):
+        collate = Collate(self.normalizer, self.tokenizer)
+
+        return collate
+
     def training_step(self, batch, batch_idx):
         mel, tokens, labels = batch
 
@@ -156,14 +175,6 @@ class Whisper(LightningModule):
         self.log("val/cer", cer, prog_bar=True)
         self.log("val/wer", wer, prog_bar=True)
 
-    def configure_optimizers(self):
-        optimizer = optim.Adam(
-            self.parameters(),
-            lr=1e-6,
-        )
-
-        return optimizer
-
 
 def load_base_model(name: str) -> Whisper:
     default = os.path.join(os.path.expanduser("~"), ".cache")
@@ -183,5 +194,26 @@ def load_base_model(name: str) -> Whisper:
 
     model.load_state_dict(checkpoint["model_state_dict"])
     model.set_alignment_heads(alignment_heads)
+
+    return model
+
+
+def load_model(name=MODEL, language=LANGUAGE):
+    options = DecodingOptions(language=LANGUAGE, without_timestamps=True)
+
+    normalizer = EnglishTextNormalizer()
+
+    tokenizer = get_tokenizer(
+        multilingual=False,
+        language=LANGUAGE,
+        task=options.task,
+    )
+
+    model = Whisper(
+        load_base_model(MODEL),
+        options,
+        normalizer,
+        tokenizer,
+    )
 
     return model
