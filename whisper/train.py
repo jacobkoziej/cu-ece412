@@ -33,6 +33,13 @@ def main() -> None:
     )
     argparser.add_argument(
         "-c",
+        "--ckpt",
+        default=None,
+        help="checkpoint",
+        metavar="PATH",
+        type=str,
+    )
+    argparser.add_argument(
         "--checkpoint-path",
         default="checkpoints",
         help="checkpoint path",
@@ -48,6 +55,12 @@ def main() -> None:
         type=int,
     )
     argparser.add_argument(
+        "--test",
+        action="store_true",
+        default=False,
+        help="test",
+    )
+    argparser.add_argument(
         "--validate",
         action="store_true",
         default=False,
@@ -56,10 +69,11 @@ def main() -> None:
 
     args = argparser.parse_args()
 
-    model = load_model()
+    model = load_model(args.ckpt)
 
     train = LibriSpeech("train-clean-100")
     val = LibriSpeech("dev-clean")
+    test = LibriSpeech("test-clean")
 
     train_loader = DataLoader(
         train,
@@ -69,6 +83,12 @@ def main() -> None:
     )
     val_loader = DataLoader(
         val,
+        batch_size=args.batch_size,
+        collate_fn=model.collate_fn,
+        num_workers=torch.cuda.device_count() * 4,
+    )
+    test_loader = DataLoader(
+        test,
         batch_size=args.batch_size,
         collate_fn=model.collate_fn,
         num_workers=torch.cuda.device_count() * 4,
@@ -86,6 +106,10 @@ def main() -> None:
         log_every_n_steps=args.batch_size,
         max_epochs=args.epochs,
     )
+
+    if args.test:
+        trainer.test(model, test_loader)
+        exit()
 
     if args.validate:
         trainer.validate(model, val_loader)
