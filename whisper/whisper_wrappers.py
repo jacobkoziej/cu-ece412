@@ -165,6 +165,9 @@ class Whisper(LightningModule):
 
         return transcripts
 
+    def forward(self, mel, tokens):
+        return self.model(mel, tokens)
+
     def test_step(self, batch, batch_idx):
         self._eval_step(batch, batch_idx, 'test')
 
