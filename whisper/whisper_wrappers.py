@@ -117,7 +117,7 @@ class Whisper(LightningModule):
         for p in self.model.decoder.parameters():
             p.requires_grad = True
 
-    def _eval_step(self, batch, batch_idx, log=''):
+    def _eval_step(self, batch, batch_idx, log=""):
         mel, tokens, labels = batch
 
         prediction = self.model.forward(mel, tokens)
@@ -169,7 +169,7 @@ class Whisper(LightningModule):
         return self.model(mel, tokens)
 
     def test_step(self, batch, batch_idx):
-        self._eval_step(batch, batch_idx, 'test')
+        self._eval_step(batch, batch_idx, "test")
 
     def training_step(self, batch, batch_idx):
         mel, tokens, labels = batch
@@ -185,7 +185,7 @@ class Whisper(LightningModule):
         return loss
 
     def validation_step(self, batch, batch_idx):
-        self._eval_step(batch, batch_idx, 'val')
+        self._eval_step(batch, batch_idx, "val")
 
 
 def load_base_model(name: str) -> Whisper:
@@ -210,7 +210,7 @@ def load_base_model(name: str) -> Whisper:
     return model
 
 
-def load_model(name=MODEL, language=LANGUAGE):
+def load_model(ckpt=None, name=MODEL, language=LANGUAGE):
     options = DecodingOptions(language=LANGUAGE, without_timestamps=True)
 
     normalizer = EnglishTextNormalizer()
@@ -221,11 +221,17 @@ def load_model(name=MODEL, language=LANGUAGE):
         task=options.task,
     )
 
-    model = Whisper(
-        load_base_model(MODEL),
-        options,
-        normalizer,
-        tokenizer,
+    hyper_parameters = {
+        "model": load_base_model(name),
+        "options": options,
+        "normalizer": normalizer,
+        "tokenizer": tokenizer,
+    }
+
+    model = (
+        Whisper.load_from_checkpoint(ckpt, **hyper_parameters)
+        if ckpt
+        else Whisper(**hyper_parameters)
     )
 
     return model
