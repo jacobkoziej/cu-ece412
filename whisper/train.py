@@ -47,6 +47,12 @@ def main() -> None:
         metavar="N",
         type=int,
     )
+    argparser.add_argument(
+        "--validate",
+        action="store_true",
+        default=False,
+        help="validate",
+    )
 
     args = argparser.parse_args()
 
@@ -80,6 +86,10 @@ def main() -> None:
         log_every_n_steps=args.batch_size,
         max_epochs=args.epochs,
     )
+
+    if args.validate:
+        trainer.validate(model, val_loader)
+        exit()
 
     trainer.fit(
         model,
