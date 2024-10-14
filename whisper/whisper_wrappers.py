@@ -122,8 +122,8 @@ class Whisper(LightningModule):
 
         prediction = self.model.forward(mel, tokens)
 
-        reference = self.decode(torch.argmax(prediction, axis=-1))
-        hypothesis = self.decode(labels)
+        reference = self.decode(labels)
+        hypothesis = self.decode(torch.argmax(prediction, axis=-1))
 
         cer = self.cer(reference, hypothesis)
         wer = self.wer(reference, hypothesis)
