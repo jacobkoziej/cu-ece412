@@ -118,13 +118,25 @@ class Whisper(LightningModule):
         for p in self.model.decoder.parameters():
             p.requires_grad = True
 
-    def _decode(self, tokens):
-        tokens[tokens == IGNORE_INDEX] = self.tokenizer.eot
+    def _eval_step(self, batch, batch_idx, log=''):
+        mel, tokens, labels = batch
 
-        transcripts = [self.tokenizer.decode(t).strip() for t in tokens]
-        transcripts = [self.normalizer(t) for t in transcripts]
+        prediction = self.model.forward(mel, tokens)
 
-        return transcripts
+        reference = self.decode(torch.argmax(prediction, axis=-1))
+        hypothesis = self.decode(labels)
+
+        cer = self.cer(reference, hypothesis)
+        wer = self.wer(reference, hypothesis)
+
+        prediction, labels = self._rearrange(prediction, labels)
+
+        loss = self.loss(prediction, labels)
+
+        if log:
+            self.log(f"{log}/loss", loss, prog_bar=True)
+            self.log(f"{log}/cer", cer, prog_bar=True)
+            self.log(f"{log}/wer", wer, prog_bar=True)
 
     def _rearrange(self, prediction, labels):
         prediction = rearrange(prediction, "b t f -> (b t) f")
@@ -146,6 +158,17 @@ class Whisper(LightningModule):
 
         return collate
 
+    def decode(self, tokens):
+        tokens[tokens == IGNORE_INDEX] = self.tokenizer.eot
+
+        transcripts = [self.tokenizer.decode(t).strip() for t in tokens]
+        transcripts = [self.normalizer(t) for t in transcripts]
+
+        return transcripts
+
+    def test_step(self, batch, batch_idx):
+        self._eval_step(batch, batch_idx, 'test')
+
     def training_step(self, batch, batch_idx):
         mel, tokens, labels = batch
 
@@ -160,23 +183,7 @@ class Whisper(LightningModule):
         return loss
 
     def validation_step(self, batch, batch_idx):
-        mel, tokens, labels = batch
-
-        prediction = self.model.forward(mel, tokens)
-
-        reference = self._decode(torch.argmax(prediction, axis=-1))
-        hypothesis = self._decode(labels)
-
-        cer = self.cer(reference, hypothesis)
-        wer = self.wer(reference, hypothesis)
-
-        prediction, labels = self._rearrange(prediction, labels)
-
-        loss = self.loss(prediction, labels)
-
-        self.log("val/loss", loss, prog_bar=True)
-        self.log("val/cer", cer, prog_bar=True)
-        self.log("val/wer", wer, prog_bar=True)
+        self._eval_step(batch, batch_idx, 'val')
 
 
 def load_base_model(name: str) -> Whisper:
