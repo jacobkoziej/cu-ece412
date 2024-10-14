@@ -41,7 +41,8 @@ MODEL = "tiny.en"
 
 
 class Collate:
-    def __init__(self, tokenizer):
+    def __init__(self, normalizer, tokenizer):
+        self.normalizer = normalizer
         self.tokenizer = tokenizer
 
     def __call__(self, batch):
@@ -53,6 +54,7 @@ class Collate:
             tokens += [
                 [*self.tokenizer.sot_sequence_including_notimestamps]
                 + self.tokenizer.encode(transcript)
+                + self.tokenizer.encode(self.normalizer(transcript))
             ]
 
         mel = torch.stack(mel)
@@ -74,23 +76,23 @@ class Collate:
 
 
 class WhisperFineTuner(LightningModule):
-    def __init__(self, model, options, tokenizer):
+    def __init__(self, model, options, normalizer, tokenizer):
         super().__init__()
 
         self.model = model
         self.options = options
+        self.normalizer = normalizer
         self.tokenizer = tokenizer
+
+        self.loss = nn.CrossEntropyLoss(ignore_index=IGNORE_INDEX)
+        self.cer = cer
+        self.wer = wer
 
         for p in self.model.parameters():
             p.requires_grad = False
 
         for p in self.model.decoder.parameters():
             p.requires_grad = True
-
-        self.loss = nn.CrossEntropyLoss(ignore_index=IGNORE_INDEX)
-        self.normalizer = EnglishTextNormalizer()
-        self.cer = cer
-        self.wer = wer
 
     def _decode(self, tokens):
         tokens[tokens == IGNORE_INDEX] = self.tokenizer.eot
@@ -178,6 +180,8 @@ def main() -> None:
 
     options = DecodingOptions(language=LANGUAGE, without_timestamps=True)
 
+    normalizer = EnglishTextNormalizer()
+
     tokenizer = get_tokenizer(
         multilingual=False,
         language=LANGUAGE,
@@ -186,7 +190,7 @@ def main() -> None:
 
     train = LibriSpeech("train-clean-100")
 
-    collate = Collate(tokenizer)
+    collate = Collate(normalizer, tokenizer)
 
     train_loader = DataLoader(
         train,
@@ -207,7 +211,8 @@ def main() -> None:
     model = WhisperFineTuner(
         load_base_model(MODEL),
         options,
-        tokenizer=tokenizer,
+        normalizer,
+        tokenizer,
     )
 
     checkpoint_callback = ModelCheckpoint(
