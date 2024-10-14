@@ -141,7 +141,10 @@ class WhisperFineTuner(LightningModule):
         self.log("val/wer", wer, prog_bar=True)
 
     def configure_optimizers(self):
-        optimizer = optim.Adam(self.parameters())
+        optimizer = optim.Adam(
+            self.parameters(),
+            lr=1e-6,
+        )
 
         return optimizer
 
