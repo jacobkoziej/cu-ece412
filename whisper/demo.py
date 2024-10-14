@@ -17,6 +17,7 @@
 #
 # demo.py -- OpenAI's Whisper on LibriSpeech ASR
 # Copyright (C) 2024  Jacob Koziej <jacobkoziej@gmail.com>
+# Copyright (C) 2024  Isaiah Rivera <isaiahcooperdump@gmail.com>
 
 # %% [markdown]
 # # Setup
@@ -28,6 +29,10 @@ from IPython.display import Audio
 from librosa.display import (
     specshow,
     waveshow,
+)
+from torch_audiomentations import (
+    AddColoredNoise,
+    Compose,
 )
 from whisper.audio import (
     log_mel_spectrogram,
@@ -150,3 +155,57 @@ cer
 
 # %% tags=["active-ipynb"]
 wer
+
+# %% [markdown]
+# ## Pushing Limits
+#
+# Let's ruin the SNR to make things more interesting!
+
+# %%
+augment = Compose(
+    [
+        AddColoredNoise(
+            min_snr_in_db=-10,
+            max_snr_in_db=-10,
+            min_f_decay=0,
+            max_f_decay=0,
+            output_type="tensor",
+        ),
+    ],
+    output_type="tensor",
+)
+
+# %%
+audio = audio.unsqueeze(0)
+audio = audio.unsqueeze(0)
+audio = augment(audio, sample_rate)
+audio = audio.squeeze()
+
+# %% tags=["active-ipynb"]
+Audio(audio, rate=sample_rate)
+
+# %%
+mel = log_mel_spectrogram(audio).unsqueeze(0)
+
+prediction = model.forward(mel, tokens)
+
+reference = model.decode(labels)
+hypothesis = model.decode(torch.argmax(prediction, axis=-1))
+
+cer = model.cer(reference, hypothesis)
+wer = model.wer(reference, hypothesis)
+
+# %% tags=["active-ipynb"]
+reference
+
+# %% tags=["active-ipynb"]
+hypothesis
+
+# %% tags=["active-ipynb"]
+cer
+
+# %% tags=["active-ipynb"]
+wer
+
+# %% [markdown]
+# Needless to say, impressive!
