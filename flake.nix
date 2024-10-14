@@ -31,6 +31,7 @@
               jiwer
               jupyter
               jupytext
+              matplotlib
               openai-whisper
               papermill
               pytorch-lightning
