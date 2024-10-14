@@ -37,6 +37,7 @@
               papermill
               pytorch-lightning
               tensorboard
+              torch-audiomentations
               torchWithCuda
               torchaudio
             ]
