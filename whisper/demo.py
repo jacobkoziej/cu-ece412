@@ -171,7 +171,7 @@ augment = Compose(
     [
         AddColoredNoise(
             min_snr_in_db=-10,
-            max_snr_in_db=-10,
+            max_snr_in_db=0,
             min_f_decay=0,
             max_f_decay=0,
             output_type="tensor",
