@@ -48,7 +48,7 @@ def main() -> None:
 
     args = argparser.parse_args()
 
-    theta_limits = (0, (2 * np.pi) - np.finfo(np.pi).eps)
+    theta_limits = (-np.pi, np.pi - np.finfo(np.pi).eps)
     zero_phi_limits = (0, np.pi)
     pole_phi_limits = ((np.pi / 2) + abs(args.epsilon), np.pi)
 
