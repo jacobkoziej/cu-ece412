@@ -81,7 +81,7 @@ class FreakIirDataset(Dataset):
         self.input = dft2input(h)
 
     def __len__(self):
-        return len(self.dataset)
+        return self.riemann_sphere.shape[0]
 
     def __getitem__(self, item):
         riemann_sphere = self.riemann_sphere[item]
