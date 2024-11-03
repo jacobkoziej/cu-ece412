@@ -23,14 +23,11 @@ class FreakIir(LightningModule):
         inputs: int = 1024,
         layers: int = 2,
         hidden_dimension: int = 16 * 1024,
-        order: int = 4,
+        sections: int = 2,
         *,
         negative_slope: float = 0.2,
     ):
         assert layers >= 2
-
-        assert not inputs % 2
-        assert not order % 2
 
         super().__init__()
 
@@ -52,16 +49,14 @@ class FreakIir(LightningModule):
         for layer in range(layers):
             self.layers.append(gen_layer(hidden_dimension, hidden_dimension))
 
-        self.layers.append(nn.Linear(hidden_dimension, order * 8))
+        self.layers.append(nn.Linear(hidden_dimension, sections * 8))
+
 
 
 class FreakIirDataset(Dataset):
-    def __init__(self, dataset: torch.Tensor, order: int, *, N: int = 512):
-        assert order >= 2
-        assert not order % 2
-
+    def __init__(self, dataset: torch.Tensor, sections: int, *, N: int = 512):
         self.riemann_sphere = rearrange(
-            dataset, "(batch order) h -> batch order h", order=order
+            dataset, "(batch sections) h -> batch sections h", sections=sections
         )
 
         zp = torch.exp(1j * dataset[..., ::2]) * (
@@ -75,8 +70,8 @@ class FreakIirDataset(Dataset):
         h = torch.tensor(
             np.array([freqz_zpk(z, p, 1, worN=N, whole=True)[-1] for z, p in zip(z, p)])
         )
-        h = rearrange(h, "(batch order) h -> batch order h", order=order)
-        h = reduce(h, "batch order h -> batch h", "prod")
+        h = rearrange(h, "(batch sections) h -> batch sections h", sections=sections)
+        h = reduce(h, "batch sections h -> batch h", "prod")
 
         self.h = h
 
