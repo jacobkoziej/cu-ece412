@@ -68,7 +68,10 @@ class FreakIirDataset(Dataset):
         p = zp[..., 2:]
 
         h = torch.tensor(
-            np.array([freqz_zpk(z, p, 1, worN=N, whole=True)[-1] for z, p in zip(z, p)])
+            np.array(
+                [freqz_zpk(z, p, 1, worN=N, whole=True)[-1] for z, p in zip(z, p)]
+            ),
+            dtype=torch.complex64 if dataset.dtype == torch.float32 else None,
         )
         h = rearrange(h, "(batch sections) h -> batch sections h", sections=sections)
         h = reduce(h, "batch sections h -> batch h", "prod")
