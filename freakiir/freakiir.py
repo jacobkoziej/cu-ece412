@@ -97,12 +97,7 @@ class FreakIirDataset(Dataset):
             dataset, "(batch sections) h -> batch sections h", sections=sections
         )
 
-        h = riemann_sphere2dft(dataset, N)
-
-        h = rearrange(
-            h, "... (batch sections) h -> ... batch sections h", sections=sections
-        )
-        h = reduce(h, "... batch sections h -> ... batch h", "prod")
+        h = riemann_sphere2dft(self.riemann_sphere, N)
 
         self.h = h
 
@@ -164,5 +159,7 @@ def riemann_sphere2dft(r: torch.Tensor, N: int) -> torch.Tensor:
     p = zp[..., 2:]
 
     _, h = freqz_zpk(z, p, 1, N)
+
+    h = reduce(h, "... sections h -> ... h", "prod")
 
     return h
