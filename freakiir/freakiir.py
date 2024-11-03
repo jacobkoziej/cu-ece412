@@ -96,3 +96,9 @@ def dft2input(f: torch.Tensor):
     z = torch.stack([10 * z.real, z.imag], axis=-1)
 
     return rearrange(z, "... w z -> ... (w z)")
+
+
+def output2riemann_sphere(o: torch.Tensor, sections: int):
+    return rearrange(
+        o, "... batch (sections h) -> ... batch sections h", sections=sections
+    )
