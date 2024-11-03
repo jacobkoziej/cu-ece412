@@ -56,7 +56,7 @@ class FreakIir(LightningModule):
         self.loss = nn.MSELoss()
 
     def _step(self, batch, batch_idx, log):
-        riemann_sphere, h, input = batch
+        riemann_sphere, spectrum, cepstrum, input = batch
 
         prediction = self.forward(input)
         prediction = output2riemann_sphere(prediction, self.hparams.sections)
@@ -99,7 +99,8 @@ class FreakIirDataset(Dataset):
 
         h = riemann_sphere2dft(self.riemann_sphere, N)
 
-        self.h = h
+        self.spectrum = h
+        self.cepstrum = dft2cepstrum(h)
 
         self.input = dft2input(h)
 
@@ -108,16 +109,23 @@ class FreakIirDataset(Dataset):
 
     def __getitem__(self, item):
         riemann_sphere = self.riemann_sphere[item]
-        h = self.h[item]
+        spectrum = self.spectrum[item]
+        cepstrum = self.cepstrum[item]
         input = self.input[item]
 
-        return riemann_sphere, h, input
+        return riemann_sphere, spectrum, cepstrum, input
 
 
 def dft2input(f: torch.Tensor):
     z = torch.stack([10 * torch.log10(f.abs()), f.angle()], axis=-1)
 
     return rearrange(z, "... w z -> ... (w z)")
+
+
+def dft2cepstrum(f: torch.Tensor) -> torch.Tensor:
+    z = torch.log(f)
+
+    return torch.fft.ifft(z)
 
 
 def freqz_zpk(
