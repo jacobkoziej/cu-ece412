@@ -140,3 +140,9 @@ def output2riemann_sphere(o: torch.Tensor, sections: int):
     return rearrange(
         o, "... batch (sections h) -> ... batch sections h", sections=sections
     )
+
+
+def polyvalfromroots(x: torch.Tensor, r: torch.Tensor) -> torch.Tensor:
+    r = r.reshape(r.shape + (1,) * x.ndim)
+
+    return reduce(x - r, "... r x -> ... x", "prod")
