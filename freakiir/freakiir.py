@@ -12,7 +12,6 @@ from einops import (
     reduce,
 )
 from pytorch_lightning import LightningModule
-from scipy.signal import freqz_zpk
 from torch import (
     nn,
     optim,
@@ -101,17 +100,15 @@ class FreakIirDataset(Dataset):
         zp = torch.exp(1j * dataset[..., ::2]) * (
             1 / torch.tan(0.5 * dataset[..., 1::2])
         )
-        zp = zp.numpy()
 
         z = zp[..., :2]
         p = zp[..., 2:]
 
-        h = torch.tensor(
-            np.array(
-                [freqz_zpk(z, p, 1, worN=N, whole=True)[-1] for z, p in zip(z, p)]
-            ),
-            dtype=torch.complex64 if dataset.dtype == torch.float32 else None,
-        )
+        self.z = z
+        self.p = p
+
+        _, h = freqz_zpk(z, p, 1, N)
+
         h = rearrange(h, "(batch sections) h -> batch sections h", sections=sections)
         h = reduce(h, "batch sections h -> batch h", "prod")
 
@@ -134,6 +131,26 @@ def dft2input(f: torch.Tensor):
     z = torch.stack([10 * torch.log10(f.abs()), f.angle()], axis=-1)
 
     return rearrange(z, "... w z -> ... (w z)")
+
+
+def freqz_zpk(
+    z: torch.Tensor,
+    p: torch.Tensor,
+    k: torch.Tensor,
+    N: int = 512,
+) -> tuple[torch.Tensor, torch.Tensor]:
+    from math import pi
+
+    assert z.dtype == p.dtype
+
+    dtype = z.dtype
+
+    w = torch.linspace(0, 2 * pi, N)
+    h = torch.exp(1j * w)
+
+    h = k * polyvalfromroots(h, z) / polyvalfromroots(h, p)
+
+    return w, h
 
 
 def output2riemann_sphere(o: torch.Tensor, sections: int):
