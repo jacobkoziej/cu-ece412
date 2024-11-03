@@ -97,20 +97,12 @@ class FreakIirDataset(Dataset):
             dataset, "(batch sections) h -> batch sections h", sections=sections
         )
 
-        zp = torch.exp(1j * dataset[..., ::2]) * (
-            1 / torch.tan(0.5 * dataset[..., 1::2])
+        h = riemann_sphere2dft(dataset, N)
+
+        h = rearrange(
+            h, "... (batch sections) h -> ... batch sections h", sections=sections
         )
-
-        z = zp[..., :2]
-        p = zp[..., 2:]
-
-        self.z = z
-        self.p = p
-
-        _, h = freqz_zpk(z, p, 1, N)
-
-        h = rearrange(h, "(batch sections) h -> batch sections h", sections=sections)
-        h = reduce(h, "batch sections h -> batch h", "prod")
+        h = reduce(h, "... batch sections h -> ... batch h", "prod")
 
         self.h = h
 
@@ -163,3 +155,14 @@ def polyvalfromroots(x: torch.Tensor, r: torch.Tensor) -> torch.Tensor:
     r = r.reshape(r.shape + (1,) * x.ndim)
 
     return reduce(x - r, "... r x -> ... x", "prod")
+
+
+def riemann_sphere2dft(r: torch.Tensor, N: int) -> torch.Tensor:
+    zp = torch.exp(1j * r[..., ::2]) * (1 / torch.tan(0.5 * r[..., 1::2]))
+
+    z = zp[..., :2]
+    p = zp[..., 2:]
+
+    _, h = freqz_zpk(z, p, 1, N)
+
+    return h
