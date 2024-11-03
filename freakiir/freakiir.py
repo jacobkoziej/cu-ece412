@@ -13,7 +13,10 @@ from einops import (
 )
 from pytorch_lightning import LightningModule
 from scipy.signal import freqz_zpk
-from torch import nn
+from torch import (
+    nn,
+    optim,
+)
 from torch.utils.data import Dataset
 
 
@@ -51,6 +54,42 @@ class FreakIir(LightningModule):
 
         self.layers.append(nn.Linear(hidden_dimension, sections * 8))
 
+        self.loss = nn.MSELoss()
+
+    def _step(self, batch, batch_idx, log):
+        riemann_sphere, h, input = batch
+
+        prediction = self.forward(input)
+        prediction = output2riemann_sphere(prediction, self.hparams.sections)
+
+        loss = self.loss(prediction, riemann_sphere)
+
+        self.log(f"{log}/loss", loss, prog_bar=True)
+
+        return loss
+
+    def configure_optimizers(self):
+        optimizer = optim.Adam(
+            self.parameters(),
+            lr=1e-6,
+        )
+
+        return optimizer
+
+    def forward(self, x: torch.Tensor):
+        for layer in self.layers:
+            x = layer(x)
+
+        return x
+
+    def test_step(self, batch, batch_idx):
+        return self._step(batch, batch_idx, "test")
+
+    def training_step(self, batch, batch_idx):
+        return self._step(batch, batch_idx, "train")
+
+    def validation_step(self, batch, batch_idx):
+        return self._step(batch, batch_idx, "val")
 
 
 class FreakIirDataset(Dataset):
