@@ -127,7 +127,7 @@ def main() -> None:
         exit()
 
     if args.validate:
-        trainer.validate(model, loaders["test"])
+        trainer.validate(model, loaders["val"])
         exit()
 
     trainer.fit(
