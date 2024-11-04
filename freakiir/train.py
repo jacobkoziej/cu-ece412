@@ -84,6 +84,12 @@ def main() -> None:
 
     model = FreakIir(sections=sections)
 
+    model = (
+        FreakIir.load_from_checkpoint(args.ckpt)
+        if args.ckpt
+        else FreakIir(sections=sections)
+    )
+
     dataset_root = os.path.join(
         os.environ.get("DATASETS_PATH", "."), f"freakIIR/{args.order}"
     )
