@@ -25,7 +25,7 @@ class FreakIir(LightningModule):
     def __init__(
         self,
         inputs: int = 1024,
-        layers: int = 8,
+        layers: int = 16,
         hidden_dimension: int = 2 * 1024,
         sections: int = 2,
         *,
