@@ -142,7 +142,7 @@ class FreakIirDataset(Dataset):
 
 
 def dft2input(f: torch.Tensor):
-    z = torch.stack([10 * torch.log10(f.abs()), f.angle()], axis=-1)
+    z = torch.stack([20 * torch.log10(f.abs()), f.angle()], axis=-1)
 
     return rearrange(z, "... w z -> ... (w z)")
 
