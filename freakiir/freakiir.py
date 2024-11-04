@@ -60,14 +60,15 @@ class FreakIir(LightningModule):
         self.layers.append(nn.Linear(hidden_dimension, sections * 8))
 
         self.mse_loss = nn.MSELoss()
+        self.loss = nn.MSELoss()
 
     def _step(self, batch, batch_idx, log):
-        _, spectrum, cepstrum, input = batch
+        riemann_sphere, spectrum, cepstrum, input = batch
 
         prediction = self.forward(input)
         prediction = output2riemann_sphere(prediction, self.hparams.sections)
 
-        loss = self.loss(prediction, spectrum, cepstrum)
+        loss = self.loss(prediction, riemann_sphere)
 
         self.log(f"{log}/loss", loss, prog_bar=True)
 
@@ -87,7 +88,7 @@ class FreakIir(LightningModule):
 
         return x
 
-    def loss(
+    def magnitude_loss(
         self, prediction: torch.Tensor, spectrum: torch.Tensor, cepstrum: torch.Tensor
     ):
         h = riemann_sphere2dft(prediction, self.N)
