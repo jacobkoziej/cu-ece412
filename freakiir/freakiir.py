@@ -76,7 +76,7 @@ class FreakIir(LightningModule):
     def configure_optimizers(self):
         optimizer = optim.Adam(
             self.parameters(),
-            lr=1e-4,
+            lr=1e-5,
         )
 
         return optimizer
