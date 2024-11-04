@@ -87,16 +87,20 @@ class FreakIir(LightningModule):
 
         return x
 
-    def loss(self, prediction: torch.Tensor, spectrum: torch.Tensor, cepstrum: torch.Tensor):
+    def loss(
+        self, prediction: torch.Tensor, spectrum: torch.Tensor, cepstrum: torch.Tensor
+    ):
         h = riemann_sphere2dft(prediction, self.N)
         c = dft2cepstrum(h)
 
         alpha = self.hparams.alpha
         mse_loss = self.mse_loss
 
-        loss = torch.tensor([0.]).to(prediction.device)
+        loss = torch.tensor([0.0]).to(prediction.device)
 
-        loss += (1 - alpha) * mse_loss(torch.log10(h.abs()), torch.log10(spectrum.abs()))
+        loss += (1 - alpha) * mse_loss(
+            torch.log10(h.abs()), torch.log10(spectrum.abs())
+        )
         loss += alpha * mse_loss(c.abs() ** 2, cepstrum.abs() ** 2)
 
         return loss
