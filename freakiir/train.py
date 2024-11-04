@@ -82,8 +82,6 @@ def main() -> None:
 
     sections = args.order // 2
 
-    model = FreakIir(sections=sections)
-
     model = (
         FreakIir.load_from_checkpoint(args.ckpt)
         if args.ckpt
