@@ -7,6 +7,8 @@
 import numpy as np
 import torch
 
+from math import pi
+
 from einops import (
     rearrange,
     reduce,
@@ -28,12 +30,16 @@ class FreakIir(LightningModule):
         sections: int = 2,
         *,
         negative_slope: float = 0.2,
+        alpha: float = 0.5,
     ):
+        assert not inputs % 2
         assert layers >= 2
 
         super().__init__()
 
         self.save_hyperparameters()
+
+        self.N = inputs // 2
 
         self.layers = nn.ModuleList()
 
@@ -53,15 +59,15 @@ class FreakIir(LightningModule):
 
         self.layers.append(nn.Linear(hidden_dimension, sections * 8))
 
-        self.loss = nn.MSELoss()
+        self.mse_loss = nn.MSELoss()
 
     def _step(self, batch, batch_idx, log):
-        riemann_sphere, spectrum, cepstrum, input = batch
+        _, spectrum, cepstrum, input = batch
 
         prediction = self.forward(input)
         prediction = output2riemann_sphere(prediction, self.hparams.sections)
 
-        loss = self.loss(prediction, riemann_sphere)
+        loss = self.loss(prediction, spectrum, cepstrum)
 
         self.log(f"{log}/loss", loss, prog_bar=True)
 
@@ -80,6 +86,20 @@ class FreakIir(LightningModule):
             x = layer(x)
 
         return x
+
+    def loss(self, prediction: torch.Tensor, spectrum: torch.Tensor, cepstrum: torch.Tensor):
+        h = riemann_sphere2dft(prediction, self.N)
+        c = dft2cepstrum(h)
+
+        alpha = self.hparams.alpha
+        mse_loss = self.mse_loss
+
+        loss = torch.tensor([0.]).to(prediction.device)
+
+        loss += (1 - alpha) * mse_loss(torch.log10(h.abs()), torch.log10(spectrum.abs()))
+        loss += alpha * mse_loss(c.abs() ** 2, cepstrum.abs() ** 2)
+
+        return loss
 
     def test_step(self, batch, batch_idx):
         return self._step(batch, batch_idx, "test")
@@ -134,13 +154,12 @@ def freqz_zpk(
     k: torch.Tensor,
     N: int = 512,
 ) -> tuple[torch.Tensor, torch.Tensor]:
-    from math import pi
-
     assert z.dtype == p.dtype
+    assert z.device == p.device
 
     dtype = z.dtype
 
-    w = torch.linspace(0, 2 * pi, N)
+    w = torch.linspace(0, 2 * pi, N).to(z.device)
     h = torch.exp(1j * w)
 
     h = k * polyvalfromroots(h, z) / polyvalfromroots(h, p)
