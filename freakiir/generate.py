@@ -6,7 +6,17 @@
 
 import torch
 
-from typing import Optional
+from collections.abc import Callable
+from typing import (
+    NewType,
+    Optional,
+)
+
+
+Generator = NewType(
+    "Generator",
+    Callable[[int, float, Optional[torch.dtype]], torch.Tensor],
+)
 
 
 def uniform_disk(
