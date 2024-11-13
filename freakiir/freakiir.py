@@ -20,6 +20,8 @@ from torch import (
 )
 from torch.utils.data import Dataset
 
+from dsp import freqz_zpk
+
 
 class FreakIir(LightningModule):
     def __init__(
@@ -153,35 +155,10 @@ def dft2cepstrum(f: torch.Tensor) -> torch.Tensor:
     return torch.fft.ifft(z)
 
 
-def freqz_zpk(
-    z: torch.Tensor,
-    p: torch.Tensor,
-    k: torch.Tensor,
-    N: int = 512,
-) -> tuple[torch.Tensor, torch.Tensor]:
-    assert z.dtype == p.dtype
-    assert z.device == p.device
-
-    dtype = z.dtype
-
-    w = torch.linspace(0, 2 * pi, N).to(z.device)
-    h = torch.exp(1j * w)
-
-    h = k * polyvalfromroots(h, z) / polyvalfromroots(h, p)
-
-    return w, h
-
-
 def output2riemann_sphere(o: torch.Tensor, sections: int):
     return rearrange(
         o, "... batch (sections h) -> ... batch sections h", sections=sections
     )
-
-
-def polyvalfromroots(x: torch.Tensor, r: torch.Tensor) -> torch.Tensor:
-    r = r.reshape(r.shape + (1,) * x.ndim)
-
-    return reduce(x - r, "... r x -> ... x", "prod")
 
 
 def riemann_sphere2dft(r: torch.Tensor, N: int) -> torch.Tensor:
