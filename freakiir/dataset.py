@@ -9,9 +9,13 @@ import torch
 
 from typing import Final
 
-from einops import rearrange
+from einops import (
+    rearrange,
+    reduce,
+)
 from torch.utils.data import Dataset
 
+from dsp import freqz_zpk
 from generate import Generator
 
 
@@ -20,19 +24,20 @@ class RandomDataset(Dataset):
         self,
         generator: Generator,
         sections: int,
-        epoch_size: int = 1 << 14,
         *,
-        w_or_N: torch.Tensor | int = 512,
+        epoch_size: int = 1 << 14,
+        N: torch.Tensor | int = 512,
     ) -> None:
-        self.epoch_size: Final[int] = epoch_size
-        self.sections: Final[int] = sections
         self.generator: Final[Generator] = generator
-        self.w_or_N: Final[torch.Tensor | int] = w_or_N
+        self.sections: Final[int] = sections
+
+        self.epoch_size: Final[int] = epoch_size
+        self.N: Final[torch.Tensor | int] = N
 
     def __len__(self) -> int:
         return self.epoch_size
 
-    def __getitem__(self, item: int | slice) -> torch.Tensor:
+    def __getitem__(self, item: int | slice) -> tuple[torch.Tensor, torch.Tensor]:
         batch_size: int
 
         match type(item):
@@ -51,13 +56,20 @@ class RandomDataset(Dataset):
 
         pairs: int = 2 * self.sections * batch_size
 
-        batch: torch.Tensor = rearrange(
+        zp: torch.Tensor = rearrange(
             self.generator(pairs),
             "(batch sections pairs zp) -> batch sections pairs zp",
             batch=batch_size,
             sections=self.sections,
             pairs=2,
             zp=2,
-        )
+        ).squeeze()
 
-        return batch.squeeze()
+        z = zp[..., 0, :]
+        p = zp[..., 1, :]
+
+        h: torch.Tensor
+        _, h = freqz_zpk(z, p, 1, N=self.N, whole=True)
+        h = reduce(h, "... sections h -> ... h", "prod")
+
+        return zp, h
