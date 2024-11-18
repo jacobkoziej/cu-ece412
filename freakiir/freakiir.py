@@ -15,7 +15,6 @@ from torch import (
     nn,
     optim,
 )
-from torch.utils.data import Dataset
 
 from dsp import freqz_zpk
 
@@ -58,7 +57,6 @@ class FreakIir(LightningModule):
 
         self.layers.append(nn.Linear(hidden_dimension, sections * 8))
 
-        self.mse_loss = nn.MSELoss()
         self.loss = nn.MSELoss()
 
     def _output2zp(self, output: torch.Tensor) -> torch.Tensor:
@@ -97,7 +95,7 @@ class FreakIir(LightningModule):
         z = zp[..., 0, :]
         p = zp[..., 1, :]
 
-        _, h = freqz_zpk(z, p, 1, N=self.hparams.inputs, whole=True)
+        _, h = freqz_zpk(z, p, 1, N=self.hparams.inputs, whole=False)
         h = reduce(h, "... sections h -> ... h", "prod")
 
         return h

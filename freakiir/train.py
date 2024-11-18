@@ -16,7 +16,7 @@ def main() -> None:
 
     from dataset import RandomDataset
     from freakiir import FreakIir
-    from generate import uniform_disk
+    from generate import uniform_half_disk
 
     argparser = argparse.ArgumentParser(
         description="freakIRR trainer",
@@ -74,7 +74,7 @@ def main() -> None:
     )
 
     dataset = RandomDataset(
-        generator=uniform_disk,
+        generator=uniform_half_disk,
         sections=sections,
     )
 

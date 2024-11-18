@@ -54,10 +54,13 @@ class RandomDataset(Dataset):
             case _:
                 raise TypeError("index must be int or slice")
 
-        pairs: int = 2 * self.sections * batch_size
+        pairs: int = self.sections * batch_size
 
-        zp: torch.Tensor = rearrange(
-            self.generator(pairs),
+        zp: torch.Tensor
+        zp = self.generator(pairs)
+        zp = torch.cat([zp, zp.conj()])
+        zp = rearrange(
+            zp,
             "(batch sections pairs zp) -> batch sections pairs zp",
             batch=batch_size,
             sections=self.sections,
@@ -69,7 +72,7 @@ class RandomDataset(Dataset):
         p = zp[..., 1, :]
 
         h: torch.Tensor
-        _, h = freqz_zpk(z, p, 1, N=self.N, whole=True)
+        _, h = freqz_zpk(z, p, 1, N=self.N, whole=False)
         h = reduce(h, "... sections h -> ... h", "prod")
 
         return zp, h

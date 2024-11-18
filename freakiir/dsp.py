@@ -14,7 +14,7 @@ def freqz_zpk(
     k: torch.Tensor,
     *,
     N: int = 512,
-    whole: bool = True,
+    whole: bool = False,
 ) -> tuple[torch.Tensor, torch.Tensor]:
     assert z.dtype == p.dtype
     assert z.device == p.device

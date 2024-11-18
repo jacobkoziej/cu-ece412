@@ -19,7 +19,7 @@ Generator = NewType(
 )
 
 
-def uniform_disk(
+def uniform_half_disk(
     pairs: int,
     *,
     epsilon: float = 1e-6,
@@ -33,7 +33,7 @@ def uniform_disk(
     samples: tuple[int] = (pairs * 2,)
 
     r_uniform: Uniform = Uniform(0 + epsilon, 1 - epsilon)
-    theta_uniform: Uniform = Uniform(0, 2 * torch.pi - torch.finfo(dtype).eps)
+    theta_uniform: Uniform = Uniform(0, torch.pi - torch.finfo(dtype).eps)
 
     r: torch.Tensor = r_uniform.sample(samples)
     theta: torch.Tensor = theta_uniform.sample(samples)
