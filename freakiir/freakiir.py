@@ -4,10 +4,7 @@
 # Copyright (C) 2024  Jacob Koziej <jacobkoziej@gmail.com>
 # Copyright (C) 2024  Eric Eng <eric.eng@cooper.edu>
 
-import numpy as np
 import torch
-
-from math import pi
 
 from einops import (
     rearrange,
@@ -26,10 +23,10 @@ from dsp import freqz_zpk
 class FreakIir(LightningModule):
     def __init__(
         self,
-        inputs: int = 1024,
-        layers: int = 16,
-        hidden_dimension: int = 2 * 1024,
-        sections: int = 2,
+        inputs: int = 512,
+        layers: int = 2,
+        hidden_dimension: int = 16 * 512,
+        sections: int = 32,
         *,
         negative_slope: float = 0.2,
         alpha: float = 0.5,
@@ -64,17 +61,46 @@ class FreakIir(LightningModule):
         self.mse_loss = nn.MSELoss()
         self.loss = nn.MSELoss()
 
+    def _output2zp(self, output: torch.Tensor) -> torch.Tensor:
+        zp: torch.Tensor = rearrange(
+            output,
+            "... (sections pairs zp complex) -> ... sections pairs zp complex",
+            sections=self.hparams.sections,
+            pairs=2,
+            zp=2,
+            complex=2,
+        )
+
+        zp = zp[..., 0] + 1j * zp[..., 1]
+
+        return zp
+
     def _step(self, batch, batch_idx, log):
-        riemann_sphere, spectrum, cepstrum, input = batch
+        zp, h = batch
+
+        input = 20 * torch.log10(h.abs())
 
         prediction = self.forward(input)
-        prediction = output2riemann_sphere(prediction, self.hparams.sections)
+        prediction = self._output2zp(prediction)
 
-        loss = self.loss(prediction, riemann_sphere)
+        h_prediction = self._zp2dft(prediction)
+
+        output = 20 * torch.log10(h_prediction.abs())
+
+        loss = self.loss(output, input)
 
         self.log(f"{log}/loss", loss, prog_bar=True)
 
         return loss
+
+    def _zp2dft(self, zp: torch.Tensor) -> torch.Tensor:
+        z = zp[..., 0, :]
+        p = zp[..., 1, :]
+
+        _, h = freqz_zpk(z, p, 1, N=self.hparams.inputs, whole=True)
+        h = reduce(h, "... sections h -> ... h", "prod")
+
+        return h
 
     def configure_optimizers(self):
         optimizer = optim.Adam(
@@ -89,24 +115,6 @@ class FreakIir(LightningModule):
             x = layer(x)
 
         return x
-
-    def magnitude_loss(
-        self, prediction: torch.Tensor, spectrum: torch.Tensor, cepstrum: torch.Tensor
-    ):
-        h = riemann_sphere2dft(prediction, self.N)
-        c = dft2cepstrum(h)
-
-        alpha = self.hparams.alpha
-        mse_loss = self.mse_loss
-
-        loss = torch.tensor([0.0]).to(prediction.device)
-
-        loss += (1 - alpha) * mse_loss(
-            torch.log10(h.abs()), torch.log10(spectrum.abs())
-        )
-        loss += alpha * mse_loss(c.abs() ** 2, cepstrum.abs() ** 2)
-
-        return loss
 
     def test_step(self, batch, batch_idx):
         return self._step(batch, batch_idx, "test")

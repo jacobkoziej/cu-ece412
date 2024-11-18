@@ -7,19 +7,16 @@
 
 def main() -> None:
     import argparse
-    import os
 
-    import pandas as pd
     import torch
 
     from pytorch_lightning import Trainer
     from pytorch_lightning.callbacks import ModelCheckpoint
     from torch.utils.data import DataLoader
 
-    from freakiir import (
-        FreakIir,
-        FreakIirDataset,
-    )
+    from dataset import RandomDataset
+    from freakiir import FreakIir
+    from generate import uniform_disk
 
     argparser = argparse.ArgumentParser(
         description="freakIRR trainer",
@@ -58,22 +55,10 @@ def main() -> None:
     )
     argparser.add_argument(
         "--order",
-        default=4,
+        default=32,
         help="filter order",
         metavar="N",
         type=int,
-    )
-    argparser.add_argument(
-        "--test",
-        action="store_true",
-        default=False,
-        help="test",
-    )
-    argparser.add_argument(
-        "--validate",
-        action="store_true",
-        default=False,
-        help="validate",
     )
 
     args = argparser.parse_args()
@@ -88,30 +73,21 @@ def main() -> None:
         else FreakIir(sections=sections)
     )
 
-    dataset_root = os.path.join(
-        os.environ.get("DATASETS_PATH", "."), f"freakIIR/{args.order}"
+    dataset = RandomDataset(
+        generator=uniform_disk,
+        sections=sections,
     )
 
-    datasets = ["train", "test", "val"]
-    datasets = {
-        dataset: FreakIirDataset(
-            torch.tensor(
-                pd.read_csv(os.path.join(dataset_root, f"{dataset}.csv")).values,
-                dtype=torch.float32,
-            ),
-            sections,
-        )
-        for dataset in datasets
-    }
+    num_workers = 4
 
-    loaders = {
-        name: DataLoader(
-            dataset,
-            batch_size=args.batch_size,
-            num_workers=torch.cuda.device_count() * 4,
-        )
-        for (name, dataset) in datasets.items()
-    }
+    if torch.cuda.is_available():
+        num_workers *= torch.cuda.device_count()
+
+    loader = DataLoader(
+        dataset,
+        batch_size=args.batch_size,
+        num_workers=num_workers,
+    )
 
     checkpoint_callback = ModelCheckpoint(
         dirpath=args.checkpoint_path,
@@ -126,18 +102,9 @@ def main() -> None:
         max_epochs=args.epochs,
     )
 
-    if args.test:
-        trainer.test(model, loaders["test"])
-        exit()
-
-    if args.validate:
-        trainer.validate(model, loaders["val"])
-        exit()
-
     trainer.fit(
         model,
-        train_dataloaders=loaders["train"],
-        val_dataloaders=loaders["val"],
+        train_dataloaders=loader,
         ckpt_path="last",
     )
 
