@@ -67,6 +67,7 @@ includes = [
 
 [global]
 excludes = [
+  "*.csv",
   "*.gitignore",
   "*.lock",
   ".editorconfig",
