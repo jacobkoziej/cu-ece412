@@ -61,6 +61,7 @@
               mdformat
               ruff
               scons
+              shfmt
               treefmt2
             ]);
         };
