@@ -6,3 +6,11 @@ includes = ["*.nix"]
 [formatter.python]
 command = "black"
 includes = ["*.py"]
+
+[global]
+excludes = [
+  "*.gitignore",
+  "*.lock",
+  ".editorconfig",
+  "LICENSE.md",
+]
