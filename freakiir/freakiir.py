@@ -94,8 +94,10 @@ class FreakIir(LightningModule):
     def _zp2dft(self, zp: torch.Tensor) -> torch.Tensor:
         z = zp[..., 0, :]
         p = zp[..., 1, :]
+        k = torch.tensor(1, dtype=zp.real.dtype).to(zp.device)
+        N = self.hparams.inputs
 
-        _, h = freqz_zpk(z, p, 1, N=self.hparams.inputs, whole=False)
+        _, h = freqz_zpk(z, p, k, N=N, whole=False)
         h = reduce(h, "... sections h -> ... h", "prod")
 
         return h

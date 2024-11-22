@@ -18,9 +18,14 @@ def freqz_zpk(
 ) -> tuple[torch.Tensor, torch.Tensor]:
     assert z.dtype == p.dtype
     assert z.device == p.device
+    assert z.shape == p.shape
+
+    assert k.device == z.device
 
     w = torch.linspace(0, torch.pi * (2 if whole else 1), N).to(z.device)
     h = torch.exp(1j * w)
+
+    k = k.reshape(k.shape + (1,) * (z.ndim - 1))
 
     h = k * polyvalfromroots(h, z) / polyvalfromroots(h, p)
 

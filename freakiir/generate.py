@@ -15,7 +15,10 @@ from typing import (
 
 Generator = NewType(
     "Generator",
-    Callable[[int, float, Optional[torch.dtype]], torch.Tensor],
+    Callable[
+        [int, float, Optional[torch.dtype], ...],
+        torch.Tensor | tuple[torch.Tensor, torch.Tensor],
+    ],
 )
 
 
@@ -23,8 +26,9 @@ def uniform_half_disk(
     pairs: int,
     *,
     epsilon: float = 1e-6,
+    polar: bool = False,
     dtype: Optional[torch.dtype] = None,
-) -> torch.Tensor:
+) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
     from torch.distributions import Uniform
 
     if dtype is None:
@@ -37,5 +41,8 @@ def uniform_half_disk(
 
     r: torch.Tensor = r_uniform.sample(samples)
     theta: torch.Tensor = theta_uniform.sample(samples)
+
+    if polar:
+        return (r, theta)
 
     return r * torch.exp(1j * theta)

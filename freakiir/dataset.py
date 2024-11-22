@@ -25,12 +25,14 @@ class RandomDataset(Dataset):
         generator: Generator,
         sections: int,
         *,
+        all_pass: bool = False,
         epoch_size: int = 1 << 14,
         N: torch.Tensor | int = 512,
     ) -> None:
         self.generator: Final[Generator] = generator
         self.sections: Final[int] = sections
 
+        self.all_pass: Final[bool] = all_pass
         self.epoch_size: Final[int] = epoch_size
         self.N: Final[torch.Tensor | int] = N
 
@@ -57,7 +59,25 @@ class RandomDataset(Dataset):
         pairs: int = self.sections * batch_size
 
         zp: torch.Tensor
-        zp = self.generator(pairs)
+
+        if self.all_pass:
+            r: torch.Tensor
+            theta: torch.Tensor
+
+            r, theta = self.generator(pairs // 2, polar=True)
+
+            r = r.reshape((-1, 1))
+            theta = theta.reshape((-1, 1))
+
+            r = torch.cat([1 / r, r], axis=-1)
+            theta = torch.cat([theta, theta], axis=-1)
+
+            zp = r * torch.exp(1j * theta)
+            zp = zp.flatten()
+
+        else:
+            zp = self.generator(pairs)
+
         zp = torch.cat([zp, zp.conj()])
         zp = rearrange(
             zp,
@@ -68,11 +88,16 @@ class RandomDataset(Dataset):
             zp=2,
         ).squeeze()
 
-        z = zp[..., 0, :]
-        p = zp[..., 1, :]
+        z: torch.Tensor = zp[..., 0, :]
+        p: torch.Tensor = zp[..., 1, :]
+        k: torch.Tensor = (
+            torch.norm(p, dim=-1) / torch.norm(z, dim=-1)
+            if self.all_pass
+            else torch.tensor(1, dtype=z.real.dtype)
+        )
 
         h: torch.Tensor
-        _, h = freqz_zpk(z, p, 1, N=self.N, whole=False)
+        _, h = freqz_zpk(z, p, k, N=self.N, whole=False)
         h = reduce(h, "... sections h -> ... h", "prod")
 
         return zp, h
