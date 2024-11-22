@@ -59,6 +59,9 @@ class FreakIir(LightningModule):
 
         self.loss = nn.MSELoss()
 
+    def _dft2mag(self, h: torch.Tensor) -> torch.Tensor:
+        return 20 * torch.log10(h.abs())
+
     def _output2zp(self, output: torch.Tensor) -> torch.Tensor:
         zp: torch.Tensor = rearrange(
             output,
@@ -76,14 +79,14 @@ class FreakIir(LightningModule):
     def _step(self, batch, batch_idx, log):
         zp, h = batch
 
-        input = 20 * torch.log10(h.abs())
+        input = self._dft2mag(h)
 
         prediction = self.forward(input)
         prediction = self._output2zp(prediction)
 
         h_prediction = self._zp2dft(prediction)
 
-        output = 20 * torch.log10(h_prediction.abs())
+        output = self._dft2mag(h_prediction)
 
         loss = self.loss(output, input)
 
