@@ -23,8 +23,8 @@ class FreakIir(LightningModule):
     def __init__(
         self,
         inputs: int = 512,
-        layers: int = 2,
-        hidden_dimension: int = 16 * 512,
+        layers: int = 4,
+        hidden_dimension: int = 4 * 512,
         sections: int = 32,
         *,
         negative_slope: float = 0.2,
@@ -105,7 +105,7 @@ class FreakIir(LightningModule):
     def configure_optimizers(self):
         optimizer = optim.Adam(
             self.parameters(),
-            lr=1e-6,
+            lr=1e-3,
         )
 
         return optimizer

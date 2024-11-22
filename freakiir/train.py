@@ -55,7 +55,7 @@ def main() -> None:
     )
     argparser.add_argument(
         "--order",
-        default=32,
+        default=8,
         help="filter order",
         metavar="N",
         type=int,
