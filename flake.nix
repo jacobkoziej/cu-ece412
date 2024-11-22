@@ -62,6 +62,7 @@
               ruff
               scons
               shfmt
+              toml-sort
               treefmt2
             ]);
         };
