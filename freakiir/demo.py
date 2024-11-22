@@ -60,7 +60,7 @@ dataset_root = os.path.join(
 )
 test = FreakIirDataset(
     torch.tensor(
-        pd.read_csv(os.path.join(dataset_root, f"test.csv")).values,
+        pd.read_csv(os.path.join(dataset_root, "test.csv")).values,
         dtype=torch.float32,
     ),
     sections,
