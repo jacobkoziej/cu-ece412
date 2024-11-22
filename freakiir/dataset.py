@@ -68,8 +68,8 @@ class RandomDataset(Dataset):
 
             r, theta = self.generator(pairs // 2, polar=True)
 
-            r = r.reshape((-1, 1))
-            theta = theta.reshape((-1, 1))
+            r = r.unsqeeze(-1)
+            theta = theta.unsqeeze(-1)
 
             r = torch.cat([1 / r, r], axis=-1)
             theta = torch.cat([theta, theta], axis=-1)
