@@ -55,7 +55,7 @@ class FreakIir(LightningModule):
         for layer in range(layers):
             self.layers.append(gen_layer(hidden_dimension, hidden_dimension))
 
-        self.layers.append(nn.Linear(hidden_dimension, sections * 8))
+        self.layers.append(nn.Linear(hidden_dimension, sections * 4))
 
         self.loss = nn.MSELoss()
 
@@ -107,13 +107,14 @@ class FreakIir(LightningModule):
         zp: torch.Tensor = rearrange(
             x,
             "... (sections pairs zp complex) -> ... sections pairs zp complex",
-            sections=sections,
+            sections=sections // 2,
             pairs=2,
             zp=2,
             complex=2,
         )
 
         zp = zp[..., 0] + 1j * zp[..., 1]
+        zp = torch.cat([zp, zp.conj()], axis=-1)
 
         return zp
 
