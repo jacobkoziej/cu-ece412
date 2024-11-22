@@ -39,7 +39,9 @@ class RandomDataset(Dataset):
     def __len__(self) -> int:
         return self.epoch_size
 
-    def __getitem__(self, item: int | slice) -> tuple[torch.Tensor, torch.Tensor]:
+    def __getitem__(
+        self, item: int | slice
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         batch_size: int
 
         match type(item):

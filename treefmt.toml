@@ -13,9 +13,14 @@ command = "nix"
 options = ["fmt"]
 includes = ["*.nix"]
 
-[formatter.python]
+[formatter.py]
 command = "black"
-includes = ["*.py"]
+options = [
+  "--line-length=79",
+]
+includes = [
+  "*.py",
+]
 
 [global]
 excludes = [

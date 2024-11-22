@@ -55,7 +55,9 @@ order = 4
 sections = order // 2
 
 # %%
-dataset_root = os.path.join(os.environ.get("DATASETS_PATH", "."), f"freakIIR/{order}")
+dataset_root = os.path.join(
+    os.environ.get("DATASETS_PATH", "."), f"freakIIR/{order}"
+)
 test = FreakIirDataset(
     torch.tensor(
         pd.read_csv(os.path.join(dataset_root, f"test.csv")).values,
