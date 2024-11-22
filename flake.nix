@@ -64,6 +64,7 @@
               shfmt
               toml-sort
               treefmt2
+              yamlfmt
             ]);
         };
 
