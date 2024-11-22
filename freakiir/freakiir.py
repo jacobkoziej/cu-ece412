@@ -62,27 +62,12 @@ class FreakIir(LightningModule):
     def _dft2mag(self, h: torch.Tensor) -> torch.Tensor:
         return 20 * torch.log10(h.abs())
 
-    def _output2zp(self, output: torch.Tensor) -> torch.Tensor:
-        zp: torch.Tensor = rearrange(
-            output,
-            "... (sections pairs zp complex) -> ... sections pairs zp complex",
-            sections=self.hparams.sections,
-            pairs=2,
-            zp=2,
-            complex=2,
-        )
-
-        zp = zp[..., 0] + 1j * zp[..., 1]
-
-        return zp
-
     def _step(self, batch, batch_idx, log):
         zp, h = batch
 
         input = self._dft2mag(h)
 
         prediction = self.forward(input)
-        prediction = self._output2zp(prediction)
 
         h_prediction = self._zp2dft(prediction)
 
@@ -117,7 +102,20 @@ class FreakIir(LightningModule):
         for layer in self.layers:
             x = layer(x)
 
-        return x
+        sections = self.hparams.sections
+
+        zp: torch.Tensor = rearrange(
+            x,
+            "... (sections pairs zp complex) -> ... sections pairs zp complex",
+            sections=sections,
+            pairs=2,
+            zp=2,
+            complex=2,
+        )
+
+        zp = zp[..., 0] + 1j * zp[..., 1]
+
+        return zp
 
     def test_step(self, batch, batch_idx):
         return self._step(batch, batch_idx, "test")
