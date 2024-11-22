@@ -59,6 +59,7 @@
             ++ (with pkgs; [
               black
               mdformat
+              pre-commit
               ruff
               scons
               shfmt
