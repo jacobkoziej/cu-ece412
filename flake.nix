@@ -58,6 +58,7 @@
             ]
             ++ (with pkgs; [
               black
+              ruff
               scons
               treefmt2
             ]);
