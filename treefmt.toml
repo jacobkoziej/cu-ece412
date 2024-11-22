@@ -10,8 +10,12 @@ includes = [
 
 [formatter.nix]
 command = "nix"
-options = ["fmt"]
-includes = ["*.nix"]
+options = [
+  "fmt",
+]
+includes = [
+  "*.nix",
+]
 
 [formatter.py]
 command = "black"
