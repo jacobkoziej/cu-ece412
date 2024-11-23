@@ -68,8 +68,8 @@ class RandomDataset(Dataset):
 
             r, theta = self.generator(pairs // 2, polar=True)
 
-            r = r.unsqeeze(-1)
-            theta = theta.unsqeeze(-1)
+            r = r.unsqueeze(-1)
+            theta = theta.unsqueeze(-1)
 
             r = torch.cat([1 / r, r], axis=-1)
             theta = torch.cat([theta, theta], axis=-1)
@@ -80,15 +80,16 @@ class RandomDataset(Dataset):
         else:
             zp = self.generator(pairs)
 
-        zp = torch.cat([zp, zp.conj()])
         zp = rearrange(
             zp,
             "(batch sections pairs zp) -> batch sections pairs zp",
             batch=batch_size,
             sections=self.sections,
             pairs=2,
-            zp=2,
-        ).squeeze()
+            zp=1,
+        )
+        zp = torch.cat([zp, zp.conj()], axis=-1)
+        zp = zp.squeeze()
 
         z: torch.Tensor = zp[..., 0, :]
         p: torch.Tensor = zp[..., 1, :]

@@ -59,6 +59,8 @@ class FreakIir(LightningModule):
 
         self.loss = nn.MSELoss()
 
+        self._output2zp = self._output2min_phase
+
     def _dft2mag(self, h: torch.Tensor) -> torch.Tensor:
         return 20 * torch.log10(h.abs())
 
@@ -78,6 +80,23 @@ class FreakIir(LightningModule):
         self.log(f"{log}/loss", loss, prog_bar=True)
 
         return loss
+
+    def _output2min_phase(self, output: torch.Tensor) -> torch.Tensor:
+        sections = self.hparams.sections
+
+        zp: torch.Tensor = rearrange(
+            output,
+            "... (sections pairs zp complex) -> ... sections pairs zp complex",
+            sections=sections,
+            pairs=2,
+            zp=1,
+            complex=2,
+        )
+
+        zp = zp[..., 0] + 1j * zp[..., 1]
+        zp = torch.cat([zp, zp.conj()], axis=-1)
+
+        return zp
 
     def _zp2dft(self, zp: torch.Tensor) -> torch.Tensor:
         z = zp[..., 0, :]
@@ -102,19 +121,7 @@ class FreakIir(LightningModule):
         for layer in self.layers:
             x = layer(x)
 
-        sections = self.hparams.sections
-
-        zp: torch.Tensor = rearrange(
-            x,
-            "... (sections pairs zp complex) -> ... sections pairs zp complex",
-            sections=sections // 2,
-            pairs=2,
-            zp=2,
-            complex=2,
-        )
-
-        zp = zp[..., 0] + 1j * zp[..., 1]
-        zp = torch.cat([zp, zp.conj()], axis=-1)
+        zp = self._output2zp(x)
 
         return zp
 
