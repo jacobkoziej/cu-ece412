@@ -16,7 +16,10 @@ from torch import (
     optim,
 )
 
-from dsp import freqz_zpk
+from dsp import (
+    freqz_zpk,
+    unwrap,
+)
 
 
 class FreakIir(LightningModule):
@@ -27,8 +30,8 @@ class FreakIir(LightningModule):
         hidden_dimension: int = 4 * 512,
         sections: int = 32,
         *,
+        all_pass: bool = False,
         negative_slope: float = 0.2,
-        alpha: float = 0.5,
     ):
         assert not inputs % 2
         assert layers >= 2
@@ -55,31 +58,61 @@ class FreakIir(LightningModule):
         for layer in range(layers):
             self.layers.append(gen_layer(hidden_dimension, hidden_dimension))
 
-        self.layers.append(nn.Linear(hidden_dimension, sections * 4))
+        self.layers.append(
+            nn.Linear(hidden_dimension, sections * (2 if all_pass else 4))
+        )
 
         self.loss = nn.MSELoss()
 
-        self._output2zp = self._output2min_phase
+        if all_pass:
+            self._output2zp = self._output2all_pass
+            self._dft2input = self._dft2phase
+
+        else:
+            self._output2zp = self._output2min_phase
+            self._dft2input = self._dft2mag
 
     def _dft2mag(self, h: torch.Tensor) -> torch.Tensor:
         return 20 * torch.log10(h.abs())
 
+    def _dft2phase(self, h: torch.Tensor) -> torch.Tensor:
+        return unwrap(h.angle())
+
     def _step(self, batch, batch_idx, log):
         zp, h = batch
 
-        input = self._dft2mag(h)
+        input = self._dft2input(h)
 
         prediction = self.forward(input)
 
         h_prediction = self._zp2dft(prediction)
 
-        output = self._dft2mag(h_prediction)
+        output = self._dft2input(h_prediction)
 
         loss = self.loss(output, input)
 
         self.log(f"{log}/loss", loss, prog_bar=True)
 
         return loss
+
+    def _output2all_pass(self, output: torch.Tensor) -> torch.Tensor:
+        sections = self.hparams.sections
+
+        zp: torch.Tensor = rearrange(
+            output,
+            "... (sections pairs zp complex) -> ... sections pairs zp complex",
+            sections=sections,
+            pairs=1,
+            zp=1,
+            complex=2,
+        )
+
+        zp = zp[..., 0] + 1j * zp[..., 1]
+
+        zp = torch.cat([1 / zp.conj(), zp], axis=-2)
+        zp = torch.cat([zp, zp.conj()], axis=-1)
+
+        return zp
 
     def _output2min_phase(self, output: torch.Tensor) -> torch.Tensor:
         sections = self.hparams.sections
