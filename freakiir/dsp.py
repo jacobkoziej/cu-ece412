@@ -39,7 +39,31 @@ def polyvalfromroots(x: torch.Tensor, r: torch.Tensor) -> torch.Tensor:
     return reduce(x - r, "... r x -> ... x", "prod")
 
 
-def unwrap(x: torch.Tensor) -> torch.Tensor:
-    y: torch.Tensor = x % (2 * pi)
+def unwrap(
+    x: torch.Tensor,
+    *,
+    discount: float | None = None,
+    period: float = 2 * pi,
+    axis: int = -1,
+) -> torch.Tensor:
+    if discount is None:
+        discount = period / 2
 
-    return torch.where(y > pi, 2 * pi - y, y)
+    high: float = period / 2
+    low: float = -high
+
+    correction_slice: list[slice, ...] = [slice(None, None)] * x.ndim
+
+    correction_slice[axis] = slice(1, None)
+
+    correction_slice: tuple[slice, ...] = tuple(correction_slice)
+
+    dd: torch.Tensor = torch.diff(x, axis=axis)
+    ddmod: torch.Tensor = torch.remainder(dd - low, period) + low
+
+    ph_correct: torch.Tensor = ddmod - dd
+    ph_correct: torch.Tensor = torch.where(dd.abs() < discount, 0, ph_correct)
+
+    x[correction_slice] = x[correction_slice] + ph_correct.cumsum(axis)
+
+    return x
