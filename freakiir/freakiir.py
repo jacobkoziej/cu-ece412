@@ -6,6 +6,8 @@
 
 import torch
 
+from typing import Optional
+
 from einops import (
     rearrange,
     reduce,
@@ -31,6 +33,10 @@ class FreakIir(LightningModule):
         sections: int = 4,
         *,
         all_pass: bool = False,
+        gamma: float = 0.1,
+        learning_rate: float = 1e-3,
+        max_epochs: int = 1024,
+        milestones: Optional[list[int]] = None,
         negative_slope: float = 0.2,
     ):
         assert not inputs % 2
@@ -151,12 +157,27 @@ class FreakIir(LightningModule):
         return h
 
     def configure_optimizers(self):
+        learning_rate = self.hparams.learning_rate
+
         optimizer = optim.Adam(
             self.parameters(),
-            lr=1e-3,
+            lr=learning_rate,
         )
 
-        return optimizer
+        max_epochs = self.hparams.max_epochs
+        milestones = self.hparams.milestones
+        gamma = self.hparams.gamma
+
+        if milestones is None:
+            milestones = max_epochs * torch.tensor([1 / 8, 1 / 4, 1 / 2])
+
+        scheduler = torch.optim.lr_scheduler.MultiStepLR(
+            optimizer,
+            milestones,
+            gamma=gamma,
+        )
+
+        return [optimizer], [scheduler]
 
     def forward(self, x: torch.Tensor):
         for layer in self.layers:
