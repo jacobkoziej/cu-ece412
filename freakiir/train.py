@@ -108,7 +108,7 @@ def main() -> None:
         dirpath=args.checkpoint_path,
         save_last="link",
         save_top_k=-1,
-        every_n_epochs=1,
+        every_n_epochs=32,
     )
 
     trainer = Trainer(
