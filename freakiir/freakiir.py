@@ -28,7 +28,7 @@ class FreakIir(LightningModule):
         inputs: int = 512,
         layers: int = 4,
         hidden_dimension: int = 4 * 512,
-        sections: int = 32,
+        sections: int = 4,
         *,
         all_pass: bool = False,
         negative_slope: float = 0.2,
