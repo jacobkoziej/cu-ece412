@@ -6,7 +6,9 @@
 import builtins
 
 import torch
+import torchaudio
 
+from pathlib import Path
 from typing import Final
 
 from einops import (
@@ -17,6 +19,46 @@ from torch.utils.data import Dataset
 
 from dsp import freqz_zpk
 from generate import Generator
+
+
+class Irc1059Dataset(Dataset):
+    def __init__(
+        self,
+        data_root: Path,
+        *,
+        N: torch.Tensor | int = 512,
+    ) -> None:
+        self.files: list[Path] = tuple(data_root.glob("**/*.wav"))
+
+        self.N: int = N
+
+    def __len__(self) -> int:
+        return len(self.files)
+
+    def __getitem__(self, item: int | slice) -> torch.Tensor:
+        squeeze: bool = isinstance(item, int)
+
+        if squeeze:
+            item = slice(item, item + 1)
+
+        audio: torch.Tensor
+
+        audio = torch.cat(
+            [
+                torchaudio.load(file)[0].unsqueeze(0)
+                for file in self.files[item]
+            ]
+        )
+        audio = reduce(audio, "... channel time -> ... time", "mean")
+
+        if squeeze:
+            audio = audio.squeeze()
+
+        N: int = self.N
+
+        h: torch.Tensor = torch.fft.rfft(audio, n=N * 2)
+
+        return h[..., :N]
 
 
 class RandomDataset(Dataset):
