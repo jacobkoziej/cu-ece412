@@ -7,14 +7,20 @@
 
 def main() -> None:
     import argparse
+    import os
 
     import torch
+
+    from pathlib import Path
 
     from pytorch_lightning import Trainer
     from pytorch_lightning.callbacks import ModelCheckpoint
     from torch.utils.data import DataLoader
 
-    from dataset import RandomDataset
+    from dataset import (
+        Irc1059Dataset,
+        RandomDataset,
+    )
     from freakiir import FreakIir
     from generate import uniform_half_disk
 
@@ -70,12 +76,16 @@ def main() -> None:
     model = (
         FreakIir.load_from_checkpoint(args.ckpt)
         if args.ckpt
-        else FreakIir(sections=sections)
+        else FreakIir(sections=sections, all_pass=False)
     )
 
-    dataset = RandomDataset(
+    random_dataset = RandomDataset(
         generator=uniform_half_disk,
         sections=sections,
+        all_pass=False,
+    )
+    irc_1059_dataset = Irc1059Dataset(
+        Path(f'{os.environ.get("DATASETS_PATH", ".")}/IRC_1059/COMPENSATED'),
     )
 
     num_workers = 4
@@ -83,8 +93,13 @@ def main() -> None:
     if torch.cuda.is_available():
         num_workers *= torch.cuda.device_count()
 
-    loader = DataLoader(
-        dataset,
+    random_loader = DataLoader(
+        random_dataset,
+        batch_size=args.batch_size,
+        num_workers=num_workers,
+    )
+    irc_1059_loader = DataLoader(
+        irc_1059_dataset,
         batch_size=args.batch_size,
         num_workers=num_workers,
     )
@@ -104,7 +119,8 @@ def main() -> None:
 
     trainer.fit(
         model,
-        train_dataloaders=loader,
+        train_dataloaders=random_loader,
+        val_dataloaders=irc_1059_loader,
         ckpt_path="last",
     )
 

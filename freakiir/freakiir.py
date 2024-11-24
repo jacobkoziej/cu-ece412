@@ -159,10 +159,10 @@ class FreakIir(LightningModule):
         return zp
 
     def test_step(self, batch, batch_idx):
-        return self._step(batch, batch_idx, "test")
+        return self._step((None, batch), batch_idx, "test")
 
     def training_step(self, batch, batch_idx):
         return self._step(batch, batch_idx, "train")
 
     def validation_step(self, batch, batch_idx):
-        return self._step(batch, batch_idx, "val")
+        return self._step((None, batch), batch_idx, "val")
