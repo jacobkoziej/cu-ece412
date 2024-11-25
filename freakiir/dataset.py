@@ -71,6 +71,8 @@ class RandomDataset(Dataset):
         epoch_size: int = 1 << 14,
         N: torch.Tensor | int = 512,
     ) -> None:
+        assert sections >= 2
+
         self.generator: Final[Generator] = generator
         self.sections: Final[int] = sections
 
