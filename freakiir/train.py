@@ -22,12 +22,22 @@ def main() -> None:
         RandomDataset,
     )
     from freakiir import FreakIir
-    from generate import uniform_half_disk
+    from generate import (
+        uniform_half_disk,
+        uniform_half_ring,
+    )
 
     argparser = argparse.ArgumentParser(
         description="freakIRR trainer",
     )
 
+    argparser.add_argument(
+        "-a",
+        "--all-pass",
+        action="store_true",
+        default=False,
+        help="generate all-pass version",
+    )
     argparser.add_argument(
         "-b",
         "--batch-size",
@@ -71,18 +81,21 @@ def main() -> None:
 
     assert not args.order % 2
 
+    all_pass = args.all_pass
     sections = args.order // 2
 
     model = (
         FreakIir.load_from_checkpoint(args.ckpt)
         if args.ckpt
-        else FreakIir(sections=sections, all_pass=False)
+        else FreakIir(sections=sections, all_pass=all_pass)
     )
 
+    generator = uniform_half_ring if all_pass else uniform_half_disk
+
     random_dataset = RandomDataset(
-        generator=uniform_half_disk,
+        generator=generator,
         sections=sections,
-        all_pass=False,
+        all_pass=all_pass,
     )
     irc_1059_dataset = Irc1059Dataset(
         Path(f'{os.environ.get("DATASETS_PATH", ".")}/IRC_1059/COMPENSATED'),
