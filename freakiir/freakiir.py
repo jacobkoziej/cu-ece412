@@ -115,7 +115,15 @@ class FreakIir(LightningModule):
 
         zp = zp[..., 0] + 1j * zp[..., 1]
 
-        zp = torch.cat([1 / zp.conj(), zp], axis=-2)
+        r: torch.Tensor = zp.abs()
+        theta: torch.Tensor = zp.angle()
+
+        r = torch.where(r < 1, r, 1 / r)
+
+        r = torch.cat([1 / r, r], axis=-2)
+        theta = torch.cat([theta, theta], axis=-2)
+
+        zp = r * torch.exp(1j * theta)
         zp = torch.cat([zp, zp.conj()], axis=-1)
 
         return zp
