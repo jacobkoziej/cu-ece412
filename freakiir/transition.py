@@ -8,6 +8,15 @@ import torch
 from torch import pi
 
 
+def horn_torus2zplane(theta: torch.Tensor, phi: torch.Tensor) -> torch.Tensor:
+    phi = torch.where(phi >= 0, phi, 2 * pi + phi)
+
+    r: torch.Tensor = torch.exp(-1 / torch.tan(phi / 2))
+    z: torch.Tensor = r * torch.exp(1j * theta)
+
+    return z
+
+
 def zplane2horn_torus(z: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
     theta: torch.Tensor = z.angle()
 
